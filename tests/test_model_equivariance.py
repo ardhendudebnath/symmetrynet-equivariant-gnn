@@ -18,6 +18,9 @@ Two methodological points these tests encode:
 
 from __future__ import annotations
 
+import ast
+from pathlib import Path
+
 import pytest
 import torch
 
@@ -25,6 +28,7 @@ from symmetrynet.models import (
     InvariantGNN,
     NaiveCoordinateGNN,
     NaiveCoordinateMLP,
+    PaiNN,
     ScratchTFN,
     TensorFieldNetwork,
 )
@@ -48,6 +52,7 @@ def build(name: str, **kwargs):
             "tfn_l0": lambda: TensorFieldNetwork(multiplicity=16, l_max=0, num_layers=3, **kwargs),
             "tfn_l1": lambda: TensorFieldNetwork(multiplicity=16, l_max=1, num_layers=3, **kwargs),
             "tfn_l2": lambda: TensorFieldNetwork(multiplicity=16, l_max=2, num_layers=3, **kwargs),
+            "painn": lambda: PaiNN(hidden=32, num_layers=3, **kwargs),
             "scratch": lambda: ScratchTFN(hidden_multiplicity=8, l_max=2, num_layers=2, **kwargs),
             "naive": lambda: NaiveCoordinateGNN(hidden=32, num_layers=3, **kwargs),
             "naive_mlp": lambda: NaiveCoordinateMLP(hidden=64, **kwargs),
@@ -55,7 +60,7 @@ def build(name: str, **kwargs):
         return builders[name]().eval()
 
 
-EQUIVARIANT = ["baseline", "tfn_l0", "tfn_l1", "tfn_l2", "scratch"]
+EQUIVARIANT = ["baseline", "tfn_l0", "tfn_l1", "tfn_l2", "painn", "scratch"]
 NOT_EQUIVARIANT = ["naive", "naive_mlp"]
 
 
@@ -170,6 +175,66 @@ def test_float64_construction_matters_for_high_l():
 
     assert residual_built < EXACT_TOL
     assert residual_cast > residual_built * 100
+
+
+def test_painn_vector_features_are_genuinely_equivariant(molecules):
+    """PaiNN's internal vectors must *rotate*, not merely leave the output invariant.
+
+    An invariant scalar output is a weak test on its own: a model whose vector channels
+    silently collapsed to zero, or which never fed them into the readout, would still
+    pass it while being a distance-only network wearing a costume. Here we rotate the
+    input and require the hidden vector features themselves to come back rotated by the
+    same matrix -- and separately require them to be non-trivial.
+    """
+    species, pos, batch, _ = molecules
+    model = build("painn")
+
+    captured: dict[str, torch.Tensor] = {}
+
+    def hook(_module, _inputs, output):
+        captured["v"] = output[1].detach().clone()
+
+    handle = model.updates[-1].register_forward_hook(hook)
+    with torch.no_grad():
+        model(species, pos, batch)
+        v_base = captured["v"]
+
+        rot = random_rotation(1, dtype=DT)
+        model(species, pos @ rot.T, batch)
+        v_rot = captured["v"]
+    handle.remove()
+
+    # v has shape (N, 3, F); the rotation acts on the spatial axis only.
+    expected = torch.einsum("ij,njf->nif", rot, v_base)
+    assert torch.allclose(v_rot, expected, atol=1e-11)
+
+    # And the vectors must actually carry information.
+    assert v_base.abs().max() > 1e-6, "vector channels collapsed to zero"
+
+
+def test_painn_uses_no_tensor_products():
+    """The point of PaiNN is that vector algebra suffices -- assert it stays that way.
+
+    Checks the module's *imports* via the AST rather than grepping the text, because the
+    docstring quite reasonably discusses e3nn and Clebsch-Gordan products while the code
+    must not depend on them.
+    """
+    source = Path(__file__).resolve().parents[1] / "src/symmetrynet/models/painn.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module)
+            imported.update(f"{node.module}.{alias.name}" for alias in node.names)
+
+    banned = ("e3nn", "wigner", "clebsch", "spherical_harmonics", "tensor_product")
+    offenders = [
+        name for name in imported if any(token in name.lower() for token in banned)
+    ]
+    assert not offenders, f"painn.py should not import {offenders}"
 
 
 def test_gpu_reproducibility_floor_is_below_tolerance(molecules):

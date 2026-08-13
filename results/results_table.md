@@ -6,6 +6,7 @@
 | run | model | l_max | train size | params | epochs | best epoch | val MAE (meV) | test MAE (meV) | minutes |
 |---|---|---|---|---|---|---|---|---|---|
 | baseline_f1_e200_s0 | baseline | — | 110,000 | 277,257 | 200 | 111 | 55.60 | **56.03** | 36.9 |
+| painn_f1_e200_s0 | painn | — | 110,000 | 575,765 | 200 | 135 | 43.55 | **43.43** | 80.7 |
 | tfn_l2_f1_e200_s0 | tfn | 2 | 110,000 | 572,681 | 200 | 184 | 58.60 | **59.43** | 276.6 |
 
 ## Ablation: maximum spherical-harmonic degree
