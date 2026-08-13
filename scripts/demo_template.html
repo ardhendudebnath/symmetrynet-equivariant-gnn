@@ -1,0 +1,691 @@
+<title>SymmetryNet &mdash; rotate the molecule, watch the prediction</title>
+
+<style>
+  :root {
+    --ink:        #14161d;
+    --ink-soft:   #262a36;
+    --paper:      #eef1f5;
+    --paper-warm: #f7f9fb;
+    --well:       #10131a;
+    --text:       #1b1f29;
+    --text-dim:   #5c6675;
+    --rule:       #d3dae2;
+    --locked:     #2a9d8f;
+    --drift:      #cf4f4f;
+    --neutral-ch: #6b7688;
+
+    --bg:      var(--paper);
+    --surface: var(--paper-warm);
+
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+    --sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    --step-0: 0.95rem;
+    --step-1: 1.1rem;
+    --step-2: 1.45rem;
+    --step-3: 2.1rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:       var(--ink);
+      --surface:  var(--ink-soft);
+      --well:     #0b0e14;
+      --text:     #e4e8ef;
+      --text-dim: #98a3b3;
+      --rule:     #333a48;
+      --locked:   #45c2b1;
+      --drift:    #e87060;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:       var(--ink);
+    --surface:  var(--ink-soft);
+    --well:     #0b0e14;
+    --text:     #e4e8ef;
+    --text-dim: #98a3b3;
+    --rule:     #333a48;
+    --locked:   #45c2b1;
+    --drift:    #e87060;
+  }
+  :root[data-theme="light"] {
+    --bg:       var(--paper);
+    --surface:  var(--paper-warm);
+    --well:     #10131a;
+    --text:     #1b1f29;
+    --text-dim: #5c6675;
+    --rule:     #d3dae2;
+    --locked:   #2a9d8f;
+    --drift:    #cf4f4f;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: var(--step-0);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(1.5rem, 4vw, var(--step-3));
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0.4rem 0 0;
+  }
+
+  .lede {
+    max-width: 62ch;
+    color: var(--text-dim);
+    font-size: var(--step-1);
+    margin: 0.9rem 0 0;
+  }
+
+  .panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: stretch;
+  }
+  @media (max-width: 860px) {
+    .panel { grid-template-columns: 1fr; }
+  }
+
+  .well {
+    position: relative;
+    background: var(--well);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+    min-height: 380px;
+    touch-action: none;
+    cursor: grab;
+  }
+  .well:active { cursor: grabbing; }
+  .well canvas { display: block; width: 100%; height: 100%; }
+
+  .well-tag {
+    position: absolute;
+    top: 0.7rem;
+    left: 0.85rem;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #7e8ba0;
+    pointer-events: none;
+  }
+  .well-hint {
+    position: absolute;
+    bottom: 0.7rem;
+    left: 0.85rem;
+    right: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: #6d7a8e;
+    pointer-events: none;
+  }
+
+  .channels { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .channel {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--chan, var(--neutral-ch));
+    border-radius: 3px;
+    padding: 0.85rem 1rem 0.75rem;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.35rem 1rem;
+    align-items: baseline;
+  }
+
+  .channel-name {
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    color: var(--text);
+    margin: 0;
+  }
+  .channel-sub {
+    grid-column: 1;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin: 0;
+  }
+  .status {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    align-self: center;
+    text-align: right;
+  }
+  .status-value {
+    font-family: var(--mono);
+    font-size: var(--step-2);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--chan, var(--text));
+    line-height: 1.1;
+    display: block;
+  }
+  .status-label {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .trace {
+    grid-column: 1 / -1;
+    margin-top: 0.5rem;
+    height: 46px;
+    width: 100%;
+    display: block;
+  }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+
+  button {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 0.5rem 0.9rem;
+    cursor: pointer;
+    transition: border-color 120ms ease, color 120ms ease;
+  }
+  button:hover { border-color: var(--locked); color: var(--locked); }
+  button:focus-visible { outline: 2px solid var(--locked); outline-offset: 2px; }
+  button[aria-pressed="true"] { border-color: var(--locked); color: var(--locked); }
+
+  .note {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+
+  .prose { max-width: 68ch; display: flex; flex-direction: column; gap: 1rem; }
+  .prose h2 {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+    margin: 1rem 0 0;
+    font-weight: 600;
+  }
+  .prose p { margin: 0; }
+  .prose code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.05em 0.32em;
+  }
+
+  .figures {
+    border-top: 1px solid var(--rule);
+    padding-top: 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1.1rem;
+  }
+  .figure-value {
+    font-family: var(--mono);
+    font-size: var(--step-2);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    display: block;
+  }
+  .figure-label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    display: block;
+    margin-top: 0.15rem;
+  }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 1.1rem;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">SymmetryNet &middot; E(3)-equivariant graph neural network &middot; QM9</p>
+    <h1>Rotate the molecule.<br>Watch which prediction refuses to move.</h1>
+    <p class="lede">
+      A molecule's HOMO&ndash;LUMO gap cannot depend on how you happened to orient it when you
+      wrote down the coordinates. Three networks are measured below on the same molecule
+      at the same orientation. Two are built so the answer <em>cannot</em> change. One was
+      given raw coordinates and left to work it out.
+    </p>
+  </header>
+
+  <section class="panel">
+    <div class="well" id="well">
+      <span class="well-tag" id="formula">&mdash;</span>
+      <canvas id="mol"></canvas>
+      <div class="well-hint">
+        <span>drag to rotate</span>
+        <span id="orientation">az 0&deg; &middot; el 0&deg;</span>
+      </div>
+    </div>
+
+    <div class="channels" id="channels"></div>
+  </section>
+
+  <div class="controls">
+    <button id="spin" aria-pressed="false">Auto-rotate</button>
+    <button id="reset">Reset orientation</button>
+    <span class="note" id="worst">&mdash;</span>
+  </div>
+
+  <section class="figures" id="figures"></section>
+
+  <section class="prose">
+    <h2>Why two of them hold still</h2>
+    <p>
+      The equivariant network labels every internal feature by which irreducible
+      representation of SO(3) it lives in, encodes bond directions as spherical harmonics,
+      and combines features with Clebsch&ndash;Gordan tensor products &mdash; the operation that
+      provably commutes with rotation. Interatomic <em>distances</em> feed a small network
+      that weights those products, which is safe because a distance is already invariant.
+      Only at the final readout are the invariant channels collected into a number.
+    </p>
+    <p>
+      The distance-only baseline gets invariance a blunter way: it never looks at
+      direction at all. That works, but it cannot represent bond angles, which is the
+      information the equivariant model keeps.
+    </p>
+    <p>
+      The naive network receives the raw components of each bond vector. Those three
+      numbers change when you rotate the molecule, so its answer does too.
+    </p>
+    <h2>These networks are untrained</h2>
+    <p>
+      That is the point worth sitting with. No training, no data augmentation, random
+      weights &mdash; and the drift is still zero to machine precision. Equivariance here is a
+      property of the architecture, true for every possible setting of the weights, not
+      something learned and approximately held. Absolute values are therefore arbitrary;
+      what is being measured is how far each prediction moves.
+    </p>
+  </section>
+
+  <footer>
+    Evaluated in float64 over a grid of orientations; the page interpolates between them.
+    Drift is measured against the starting orientation. Source, derivations and the full
+    test suite live in the SymmetryNet repository.
+  </footer>
+</div>
+
+<script id="demo-data" type="application/json">__DEMO_DATA__</script>
+
+<script>
+(function () {
+  "use strict";
+
+  const DATA = JSON.parse(document.getElementById("demo-data").textContent);
+  const MOL = DATA.molecule;
+  const GRID = DATA.grid;
+
+  const CHANNELS = [
+    {
+      key: "equivariant",
+      name: "Equivariant TFN",
+      sub: "spherical harmonics + Clebsch\u2013Gordan tensor products, \u2113max = 2",
+      color: "var(--locked)",
+    },
+    {
+      key: "invariant",
+      name: "Distance-only baseline",
+      sub: "interatomic distances only \u2014 invariant, but angle-blind",
+      color: "var(--locked)",
+    },
+    {
+      key: "naive",
+      name: "Naive GNN",
+      sub: "raw bond-vector components fed straight in",
+      color: "var(--drift)",
+    },
+  ];
+
+  // ---------------------------------------------------------------- geometry
+  function rotationMatrix(az, el) {
+    // Must match scripts/make_interactive_demo.py: R = Rz(az) @ Ry(el)
+    const ca = Math.cos(az), sa = Math.sin(az);
+    const ce = Math.cos(el), se = Math.sin(el);
+    return [
+      [ca * ce, -sa, ca * se],
+      [sa * ce,  ca, sa * se],
+      [-se,       0, ce],
+    ];
+  }
+
+  function apply(R, p) {
+    return [
+      R[0][0] * p[0] + R[0][1] * p[1] + R[0][2] * p[2],
+      R[1][0] * p[0] + R[1][1] * p[1] + R[1][2] * p[2],
+      R[2][0] * p[0] + R[2][1] * p[1] + R[2][2] * p[2],
+    ];
+  }
+
+  // Bilinear lookup into the precomputed orientation grid; azimuth wraps.
+  function predict(key, az, el) {
+    const g = DATA.models[key].values;
+    const nA = GRID.n_azimuth, nE = GRID.n_elevation;
+    const TAU = Math.PI * 2;
+
+    let a = ((az % TAU) + TAU) % TAU;
+    const fa = a / GRID.azimuth_step;
+    const a0 = Math.floor(fa) % nA;
+    const a1 = (a0 + 1) % nA;
+    const ta = fa - Math.floor(fa);
+
+    const clamped = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, el));
+    const fe = (clamped - GRID.elevation_start) / GRID.elevation_step;
+    const e0 = Math.max(0, Math.min(nE - 1, Math.floor(fe)));
+    const e1 = Math.min(nE - 1, e0 + 1);
+    const te = fe - e0;
+
+    const top = g[e0][a0] * (1 - ta) + g[e0][a1] * ta;
+    const bot = g[e1][a0] * (1 - ta) + g[e1][a1] * ta;
+    return top * (1 - te) + bot * te;
+  }
+
+  // ------------------------------------------------------------------- state
+  let azimuth = 0, elevation = 0;
+  let spinning = false;
+  const reference = {};
+  CHANNELS.forEach((c) => { reference[c.key] = predict(c.key, 0, 0); });
+
+  const TRACE_LEN = 220;
+  const traces = {};
+  CHANNELS.forEach((c) => { traces[c.key] = new Float64Array(TRACE_LEN); });
+  let traceHead = 0;
+
+  // Shared vertical scale so the channels are directly comparable: whatever the
+  // worst-behaved model does, the others are drawn on the same axis.
+  const naiveSpread = DATA.models.naive.spread || 1e-6;
+  const TRACE_SCALE = naiveSpread * 0.62;
+
+  // ------------------------------------------------------------------- build
+  const channelsEl = document.getElementById("channels");
+  const nodes = {};
+
+  CHANNELS.forEach((c) => {
+    const el = document.createElement("article");
+    el.className = "channel";
+    el.style.setProperty("--chan", c.color);
+    el.innerHTML =
+      '<p class="channel-name">' + c.name + "</p>" +
+      '<p class="channel-sub">' + c.sub + "</p>" +
+      '<div class="status">' +
+        '<span class="status-value" data-role="value">0</span>' +
+        '<span class="status-label" data-role="label">drift (eV)</span>' +
+      "</div>" +
+      '<canvas class="trace" data-role="trace"></canvas>';
+    channelsEl.appendChild(el);
+    nodes[c.key] = {
+      value: el.querySelector('[data-role="value"]'),
+      label: el.querySelector('[data-role="label"]'),
+      trace: el.querySelector('[data-role="trace"]'),
+    };
+  });
+
+  document.getElementById("formula").textContent =
+    MOL.formula + " \u00b7 " + MOL.atoms.length + " atoms";
+
+  const figuresEl = document.getElementById("figures");
+  CHANNELS.forEach((c) => {
+    const spread = DATA.models[c.key].spread;
+    const fig = document.createElement("div");
+    fig.innerHTML =
+      '<span class="figure-value" style="color:' + c.color + '">' +
+        formatDrift(spread) + " eV</span>" +
+      '<span class="figure-label">' + c.name +
+        " \u2014 total spread over " + (GRID.n_azimuth * GRID.n_elevation).toLocaleString() +
+        " orientations</span>";
+    figuresEl.appendChild(fig);
+  });
+
+  const ratio = DATA.models.naive.spread /
+    Math.max(DATA.models.equivariant.spread, 1e-18);
+  document.getElementById("worst").innerHTML =
+    "naive : equivariant \u2248 10<sup>" + Math.round(Math.log10(ratio)) +
+    "</sup> \u00d7";
+
+  function formatDrift(v) {
+    const a = Math.abs(v);
+    if (a < 1e-12) return a.toExponential(1);
+    if (a < 1e-3) return a.toExponential(2);
+    return a.toFixed(5);
+  }
+
+  // ------------------------------------------------------------- molecule draw
+  const canvas = document.getElementById("mol");
+  const ctx = canvas.getContext("2d");
+  let dpr = 1;
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.round(rect.width * dpr));
+    canvas.height = Math.max(1, Math.round(rect.height * dpr));
+  }
+
+  const extent = Math.max.apply(
+    null,
+    MOL.atoms.map((a) => Math.hypot(a.pos[0], a.pos[1], a.pos[2]))
+  ) || 1;
+
+  function drawMolecule() {
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const R = rotationMatrix(azimuth, elevation);
+    const scale = Math.min(w, h) / (2.5 * extent);
+    const cx = w / 2, cy = h / 2;
+
+    // Project: x -> screen x, z -> screen up, y -> depth. Rz(az) then reads as a
+    // turntable spin and Ry(el) as a tilt, which is what dragging should feel like.
+    const pts = MOL.atoms.map((atom, i) => {
+      const p = apply(R, atom.pos);
+      return { i: i, x: cx + p[0] * scale, y: cy - p[2] * scale, depth: p[1], atom: atom };
+    });
+
+    ctx.lineCap = "round";
+    MOL.bonds.forEach((b) => {
+      const A = pts[b[0]], B = pts[b[1]];
+      const near = (A.depth + B.depth) / 2;
+      const t = (near / extent + 1) / 2;
+      ctx.strokeStyle = "rgba(150,166,190," + (0.30 + 0.45 * t).toFixed(3) + ")";
+      ctx.lineWidth = (2.0 + 1.4 * t) * dpr;
+      ctx.beginPath();
+      ctx.moveTo(A.x, A.y);
+      ctx.lineTo(B.x, B.y);
+      ctx.stroke();
+    });
+
+    pts.sort((a, b) => a.depth - b.depth);
+    pts.forEach((p) => {
+      const t = (p.depth / extent + 1) / 2;
+      const r = p.atom.radius * scale * (0.62 + 0.16 * t);
+      const grad = ctx.createRadialGradient(
+        p.x - r * 0.32, p.y - r * 0.36, r * 0.12, p.x, p.y, r
+      );
+      grad.addColorStop(0, "#ffffff");
+      grad.addColorStop(0.35, p.atom.color);
+      grad.addColorStop(1, shade(p.atom.color, -0.45));
+      ctx.fillStyle = grad;
+      ctx.globalAlpha = 0.55 + 0.45 * t;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  function shade(hex, amount) {
+    const n = parseInt(hex.slice(1), 16);
+    const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+    const r = clamp(((n >> 16) & 255) * (1 + amount));
+    const g = clamp(((n >> 8) & 255) * (1 + amount));
+    const b = clamp((n & 255) * (1 + amount));
+    return "rgb(" + r + "," + g + "," + b + ")";
+  }
+
+  // ------------------------------------------------------------- trace draw
+  function drawTrace(key, color) {
+    const cv = nodes[key].trace;
+    const rect = cv.getBoundingClientRect();
+    if (cv.width !== Math.round(rect.width * dpr)) {
+      cv.width = Math.max(1, Math.round(rect.width * dpr));
+      cv.height = Math.max(1, Math.round(46 * dpr));
+    }
+    const c = cv.getContext("2d");
+    const w = cv.width, h = cv.height;
+    c.clearRect(0, 0, w, h);
+
+    const styles = getComputedStyle(document.documentElement);
+    const rule = styles.getPropertyValue("--rule").trim() || "#ccc";
+    c.strokeStyle = rule;
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(0, h / 2);
+    c.lineTo(w, h / 2);
+    c.stroke();
+
+    const buf = traces[key];
+    const resolved = color.startsWith("var(")
+      ? styles.getPropertyValue(color.slice(4, -1)).trim()
+      : color;
+    c.strokeStyle = resolved || "#888";
+    c.lineWidth = 1.6 * dpr;
+    c.beginPath();
+    for (let k = 0; k < TRACE_LEN; k++) {
+      const idx = (traceHead + k) % TRACE_LEN;
+      const x = (k / (TRACE_LEN - 1)) * w;
+      const norm = Math.max(-1, Math.min(1, buf[idx] / TRACE_SCALE));
+      const y = h / 2 - norm * (h / 2 - 3 * dpr);
+      if (k === 0) c.moveTo(x, y); else c.lineTo(x, y);
+    }
+    c.stroke();
+  }
+
+  // ------------------------------------------------------------------ update
+  function update() {
+    CHANNELS.forEach((c) => {
+      const drift = predict(c.key, azimuth, elevation) - reference[c.key];
+      traces[c.key][traceHead] = drift;
+      nodes[c.key].value.textContent = formatDrift(drift);
+    });
+    traceHead = (traceHead + 1) % TRACE_LEN;
+
+    document.getElementById("orientation").textContent =
+      "az " + Math.round(((azimuth * 180) / Math.PI) % 360) + "\u00b0 \u00b7 el " +
+      Math.round((elevation * 180) / Math.PI) + "\u00b0";
+
+    drawMolecule();
+    CHANNELS.forEach((c) => drawTrace(c.key, c.color));
+  }
+
+  // ------------------------------------------------------------- interaction
+  const well = document.getElementById("well");
+  let dragging = false, lastX = 0, lastY = 0;
+
+  well.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    well.setPointerCapture(e.pointerId);
+  });
+  well.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    azimuth += (e.clientX - lastX) * 0.011;
+    elevation = Math.max(
+      -Math.PI / 2, Math.min(Math.PI / 2, elevation + (e.clientY - lastY) * 0.009)
+    );
+    lastX = e.clientX;
+    lastY = e.clientY;
+    update();
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((ev) =>
+    well.addEventListener(ev, () => { dragging = false; })
+  );
+
+  const spinBtn = document.getElementById("spin");
+  spinBtn.addEventListener("click", () => {
+    spinning = !spinning;
+    spinBtn.setAttribute("aria-pressed", String(spinning));
+    if (spinning) requestAnimationFrame(tick);
+  });
+  document.getElementById("reset").addEventListener("click", () => {
+    azimuth = 0;
+    elevation = 0;
+    update();
+  });
+
+  function tick() {
+    if (!spinning) return;
+    azimuth += 0.012;
+    elevation = Math.sin(azimuth * 0.37) * 0.5;
+    update();
+    requestAnimationFrame(tick);
+  }
+
+  window.addEventListener("resize", () => { resize(); update(); });
+
+  resize();
+  update();
+
+  // Start gently animating so the contrast is visible without any interaction,
+  // unless the viewer has asked for reduced motion.
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    spinning = true;
+    spinBtn.setAttribute("aria-pressed", "true");
+    requestAnimationFrame(tick);
+  }
+})();
+</script>

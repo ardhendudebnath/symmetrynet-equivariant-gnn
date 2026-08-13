@@ -1,0 +1,44 @@
+[
+  {
+    "run_name": "tfn_l0_f1_e50_s0",
+    "model": "tfn",
+    "l_max": 0,
+    "train_fraction": 1.0,
+    "seed": 0,
+    "epochs": 50,
+    "num_params": 154505,
+    "train_size": 110000,
+    "best_epoch": 49,
+    "val_mae_meV": 113.43459158454198,
+    "test_mae_meV": 113.58748420656222,
+    "minutes": 22.93353398243586
+  },
+  {
+    "run_name": "tfn_l1_f1_e50_s0",
+    "model": "tfn",
+    "l_max": 1,
+    "train_fraction": 1.0,
+    "seed": 0,
+    "epochs": 50,
+    "num_params": 306249,
+    "train_size": 110000,
+    "best_epoch": 49,
+    "val_mae_meV": 90.57690535355732,
+    "test_mae_meV": 89.55042480520656,
+    "minutes": 34.227428289254505
+  },
+  {
+    "run_name": "tfn_l2_f1_e50_s0",
+    "model": "tfn",
+    "l_max": 2,
+    "train_fraction": 1.0,
+    "seed": 0,
+    "epochs": 50,
+    "num_params": 572681,
+    "train_size": 110000,
+    "best_epoch": 49,
+    "val_mae_meV": 76.8384951241821,
+    "test_mae_meV": 78.63084500173214,
+    "minutes": 84.49545466502508
+  }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "run_name": "baseline_f1_e50_s0",
+    "model": "baseline",
+    "l_max": null,
+    "train_fraction": 1.0,
+    "seed": 0,
+    "epochs": 50,
+    "num_params": 277257,
+    "train_size": 110000,
+    "best_epoch": 48,
+    "val_mae_meV": 63.75176695984675,
+    "test_mae_meV": 63.82378055855526,
+    "minutes": 12.301983300844828
+  },
+  {
+    "run_name": "tfn_l2_f1_e50_s0",
+    "model": "tfn",
+    "l_max": 2,
+    "train_fraction": 1.0,
+    "seed": 0,
+    "epochs": 50,
+    "num_params": 572681,
+    "train_size": 110000,
+    "best_epoch": 49,
+    "val_mae_meV": 76.8384951241821,
+    "test_mae_meV": 78.63084500173214,
+    "minutes": 84.49545466502508
+  }
+]
