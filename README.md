@@ -32,8 +32,18 @@ would sort models by how large their outputs happen to be rather than by how wel
 respect the symmetry. Absolute values and scales are both recorded in
 [`results/equivariance.json`](results/equivariance.json).
 
-**[▶ Try the interactive demo](https://claude.ai/code/artifact/79cac988-a756-4983-b871-fc434b3edd11)** —
-drag a molecule around and watch two predictions hold still while the third wanders.
+![Rotation demo](results/rotation.gif)
+
+The same fact as an animation: one molecule, rotated through a full turn. Both models are
+untrained, and the equivariant prediction does not move.
+
+**Interactive version** — [`results/demo.html`](results/demo.html) is a self-contained page
+with no server and no dependencies: clone the repo and open it in a browser to drag the
+molecule yourself. Rebuild it with:
+
+```bash
+python scripts/make_interactive_demo.py && python scripts/build_demo_page.py
+```
 
 ---
 
