@@ -80,13 +80,18 @@ is labelled with its budget and whether that run actually converged.
 selection rule permits only `0 ⊗ 0 → 0`, so no angular path exists at all. Raising
 `l_max` opens paths that can represent bond angles.
 
-| `l_max` | representable | params | test MAE |
+| `l_max` | representable | params | test MAE (50 epochs) |
 |---|---|---|---|
 | 0 | scalars only | 154k | 113.59 meV |
 | 1 | + vectors | 306k | 89.55 meV |
 | 2 | + rank-2 tensors | 573k | **78.63 meV** |
 
 ![l_max ablation](results/ablation_lmax.png)
+
+> These three runs share a **50-epoch** budget, so they are internally comparable but sit
+> above the 200-epoch numbers quoted elsewhere (`l_max=2` reaches 59.43 meV given the
+> longer schedule). The ablation is about the *ordering*, which the shared budget makes
+> valid; it is not a source of absolute figures.
 
 Monotone, −31% from `l_max=0` to `l_max=2`. Angular information is measurably worth
 something, and the effect is isolated from every other architectural variable.
@@ -142,12 +147,7 @@ The short-budget comparison was mostly measuring which model converges faster, n
 is better. Every number quoted above uses the 200-epoch runs.
 </details>
 
-### The TFN is not more data-efficient — the trend runs the other way
-
-**Scope:** this sweep compares the **TFN** against the baseline. It predates the PaiNN
-result and does not include it, so it says nothing about whether *equivariance* is
-data-efficient in general — only about the Clebsch-Gordan architecture. Re-running it with
-PaiNN is the obvious next experiment and is listed under future work.
+### Data efficiency: PaiNN wins everywhere, but the hypothesis is still contradicted
 
 Every point below is trained to convergence rather than to a fixed epoch count. That
 distinction is not cosmetic: a point at 10% data sees a fifth as many gradient steps per
@@ -156,32 +156,44 @@ large-data ones. An earlier version of this curve had exactly that defect and wa
 misleading. [`scripts/consolidate_data_efficiency.py`](scripts/consolidate_data_efficiency.py)
 now checks convergence automatically and refuses to report a point silently.
 
-| training molecules | epochs | baseline | equivariant | ratio |
-|---|---|---|---|---|
-| 11,000 (10%) | 250 | **142.03** | 182.66 | 0.78× |
-| 27,500 (25%) | 200 | **98.06** | 117.31 | 0.84× |
-| 55,000 (50%) | 400 | **71.31** | 80.47 | 0.89× |
-| 110,000 (100%) | 200 | **56.03** | 59.43 | 0.94× |
+| training molecules | baseline | **PaiNN** | TFN | PaiNN ratio | TFN ratio |
+|---|---|---|---|---|---|
+| 11,000 (10%) | 142.03 | **122.28** | 182.66 | 1.16× | 0.78× |
+| 27,500 (25%) | 98.06 | **84.12** | 117.31 | 1.17× | 0.84× |
+| 55,000 (50%) | 71.31 | **58.09** | 80.47 | 1.23× | 0.89× |
+| 110,000 (100%) | 56.03 | **43.43** | 59.43 | 1.29× | 0.94× |
 
 ![Data efficiency](results/data_efficiency.png)
 
-**For the TFN the hypothesis is not merely unsupported — it is contradicted.** The
-prediction was that symmetry constraints would matter *most* when data is scarce, so the
-equivariant model should close the gap as the training set shrinks. The ratio instead moves
-monotonically in the opposite direction: 0.78 → 0.84 → 0.89 → 0.94 as data grows. The TFN's
-relative disadvantage is **largest at 10% data and smallest at 100%** — precisely backwards.
+**PaiNN beats the baseline at every training set size** — 1.16× at 11k molecules rising to
+1.29× at 110k. That is a real, architecture-level win for equivariance, not an artifact of
+one operating point.
 
-This fits the PaiNN result rather than contradicting it. A built-in symmetry shrinks the
-hypothesis space, but that only pays off if the remaining capacity is easy to fit. The
-tensor-product model has a materially harder optimisation problem — it needed roughly four
-times the baseline's schedule to converge at all — and in the low-data regime that cost
-outweighs the benefit of the constraint. PaiNN keeps the symmetry while removing most of
-the optimisation burden, which is consistent with it winning outright at full data.
+**And yet the data-efficiency hypothesis is contradicted for both equivariant models.** The
+prediction was that symmetry constraints matter *most* when data is scarce, so the
+equivariant advantage should be largest at the left of the plot and shrink to the right.
+Both curves slope the opposite way:
 
-One honest caveat: the 100% equivariant point was interrupted at epoch 185/186 and its best
-epoch was its last, so it is marginally under-converged and its true ratio is slightly
-better than 0.94. That nudges the last point in the direction the hypothesis wants — but it
-cannot reverse a trend that runs monotonically across four points.
+- PaiNN: 1.16 → 1.29 (wins everywhere, but by **less** when data is scarce)
+- TFN: 0.78 → 0.94 (loses everywhere, and by **more** when data is scarce)
+
+Two different equivariant architectures, one winning and one losing, with the same
+qualitative trend. On this target, the benefit of built-in symmetry *grows* with data
+rather than shrinking.
+
+**This also falsifies my own earlier explanation.** When only the TFN had been tested, I
+attributed its backwards trend to optimisation difficulty — the tensor-product model needed
+roughly four times the baseline's schedule to converge, and I argued that cost outweighed
+the symmetry benefit when data was scarce. PaiNN tests that directly: it keeps the symmetry
+and removes most of the optimisation burden. The explanation survives for the *level* (PaiNN
+sits above 1.0 where the TFN sits below) but fails for the *slope*, which is unchanged.
+Whatever drives the trend is not optimisation difficulty. I do not have a confirmed
+explanation for it, and would rather say so than invent one.
+
+One honest caveat: the 100% TFN point was interrupted at epoch 185/186 with its best epoch
+last, so it is marginally under-converged and its true ratio is slightly above 0.94. That
+nudges one point in the direction the hypothesis wants and does not affect the PaiNN curve
+at all.
 
 **Why this is a real result and not a broken baseline.** The control lands at 63.8 meV;
 published SchNet on this exact QM9 target is ~63 meV. Reproducing the literature number

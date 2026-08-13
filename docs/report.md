@@ -228,21 +228,41 @@ in. The interesting question about equivariant networks is not *whether* to impo
 symmetry — it is what you are willing to pay to impose it, because the cheapest sufficient
 construction beat the most general one.
 
-**The TFN is also not more data-efficient, and the trend runs backwards.** With every point
-trained to convergence rather than to a fixed epoch count (this sweep predates PaiNN and
-covers only the TFN):
+**Neither equivariant model is more data-efficient, and this is the result I trust most,
+because it survived the architecture change that overturned everything else.** Every point
+is trained to convergence rather than to a fixed epoch count:
 
-| training molecules | baseline | equivariant | ratio |
-|---|---|---|---|
-| 11,000 | 142.03 | 182.66 | 0.78 |
-| 27,500 | 98.06 | 117.31 | 0.84 |
-| 55,000 | 71.31 | 80.47 | 0.89 |
-| 110,000 | 56.03 | 59.43 | 0.94 |
+| training molecules | baseline | PaiNN | TFN | PaiNN ratio | TFN ratio |
+|---|---|---|---|---|---|
+| 11,000 | 142.03 | **122.28** | 182.66 | 1.16 | 0.78 |
+| 27,500 | 98.06 | **84.12** | 117.31 | 1.17 | 0.84 |
+| 55,000 | 71.31 | **58.09** | 80.47 | 1.23 | 0.89 |
+| 110,000 | 56.03 | **43.43** | 59.43 | 1.29 | 0.94 |
 
-The prediction was that symmetry would matter most when data is scarce, so the gap should
-*close* as the training set shrinks. It widens instead — monotonically, across four
-points. The equivariant model's relative disadvantage is largest at 10% data and smallest
-at 100%, exactly the reverse of the hypothesis.
+PaiNN beats the baseline at every size, which is a genuine architecture-level win. But the
+prediction under test was about the *shape* of these curves: symmetry should matter most
+when data is scarce, so the equivariant advantage should be largest on the left and shrink
+to the right. Both curves slope the other way. PaiNN wins everywhere but by less when data
+is scarce; the TFN loses everywhere and by more when data is scarce.
+
+Two architectures, opposite outcomes, identical trend. On this target the benefit of a
+built-in symmetry grows with data rather than shrinking.
+
+This also falsifies the explanation I offered when only the TFN had been measured. I had
+attributed its backwards trend to optimisation difficulty: the tensor-product model needed
+roughly four times the baseline's schedule to converge, and I argued that cost swamped the
+symmetry benefit in the low-data regime. PaiNN is a direct test of that claim, since it
+keeps the symmetry and removes most of the optimisation burden. The explanation accounts
+for the *level* — PaiNN sits above 1.0 where the TFN sits below — and fails for the
+*slope*, which does not change at all. Whatever produces the trend is not optimisation
+difficulty.
+
+I do not have a confirmed explanation. The candidate I find most plausible is that
+QM9's molecules are small and chemically repetitive enough that a distance-only model
+recovers most angular structure from data alone once it has enough of it, so the marginal
+value of hard-coding the symmetry is highest exactly where the baseline is already
+strongest. But that is a hypothesis I have not tested, and I would rather leave it labelled
+as one.
 
 Getting to a curve I trust took two corrections worth recording. The first version used a
 fixed epoch budget per fraction, which converges the small-data points while starving the
@@ -252,14 +272,6 @@ the 50% point at 200 epochs would have given it roughly half the updates the ful
 needed, since half the data means half the steps per epoch. The correct budget is set by
 gradient steps, not epochs — 370 rather than 200. The convergence check is now automated
 so this cannot recur silently.
-
-The reading that ties this to the PaiNN result: a built-in symmetry shrinks the hypothesis
-space, but that only pays off if the remaining capacity is easy to fit. The tensor-product
-model has a materially harder optimisation problem — it needed roughly four times the
-baseline's schedule to converge at all — and in the low-data regime that cost outweighs the
-benefit of the constraint. PaiNN keeps the symmetry while removing most of the optimisation
-burden, which is consistent with it winning outright at full data. Whether it also inverts
-the data-efficiency trend is untested, and is the first experiment I would run next.
 
 A note on how this conclusion moved. For most of the project the honest summary was
 "equivariance does not help here", and I wrote it up that way rather than tuning until it
@@ -290,11 +302,12 @@ argument should have been strongest.
 
 ## What I would do next
 
-**Re-run the data-efficiency sweep with PaiNN.** The existing curve tests the TFN, and the
-TFN turned out to be the wrong architecture to draw conclusions from. The hypothesis that
-symmetry helps most when data is scarce deserves a test against the model that actually
-works. This is cheap — PaiNN trains in under a third of the TFN's time — and it is the one
-experiment whose result I genuinely cannot predict.
+**Find out what actually drives the data-efficiency trend.** Both equivariant models show
+the advantage growing with data, and my optimisation-difficulty explanation was falsified
+by PaiNN. The cheapest discriminating test is a harder dataset: QM9 molecules are small and
+chemically repetitive, so a distance-only model may simply be recovering angular structure
+from data once it has enough. A benchmark with more geometric diversity would separate
+"symmetry is not worth much here" from "QM9 is too easy to show it".
 
 **Predict forces rather than a scalar.** Forces are ℓ=1, so the output itself is
 equivariant rather than invariant, and the advantage should be considerably larger: a

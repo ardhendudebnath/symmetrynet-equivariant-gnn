@@ -109,22 +109,31 @@ def plot_data_efficiency() -> None:
     ax.legend(fontsize=9)
     ax.grid(alpha=0.25, which="both")
 
-    # How much baseline data would be needed to match the equivariant model?
-    if {"baseline", "tfn"} <= by_model.keys():  # noqa: SIM102
+    # Each equivariant model measured against the same invariant baseline, so the two
+    # architectures can be read against each other as well as against the control.
+    if "baseline" in by_model:
         base = dict(by_model["baseline"])
-        tfn = dict(by_model["tfn"])
-        shared = sorted(set(base) & set(tfn))
-        ratios = [base[s] / tfn[s] for s in shared]
-        ax_ratio.plot(shared, ratios, "o-", color="#6a4c93", lw=2.0, ms=7)
+        for model in ("tfn", "painn"):
+            if model not in by_model:
+                continue
+            other = dict(by_model[model])
+            shared = sorted(set(base) & set(other))
+            if not shared:
+                continue
+            ratios = [base[s] / other[s] for s in shared]
+            ax_ratio.plot(shared, ratios, "o-", color=COLORS[model], lw=2.0, ms=7,
+                          label=LABELS[model])
+            for size, ratio in zip(shared, ratios, strict=True):
+                ax_ratio.annotate(f"{ratio:.2f}x", (size, ratio), textcoords="offset points",
+                                  xytext=(0, 8), ha="center", fontsize=8.5)
+
         ax_ratio.axhline(1.0, color="0.6", ls="--", lw=1.0)
         ax_ratio.set_xscale("log")
         ax_ratio.set_xlabel("training molecules")
         ax_ratio.set_ylabel("baseline MAE / equivariant MAE")
         ax_ratio.set_title("Relative error reduction\n(above 1.0 favours the equivariant model)")
         ax_ratio.grid(alpha=0.25, which="both")
-        for size, ratio in zip(shared, ratios, strict=True):
-            ax_ratio.annotate(f"{ratio:.2f}x", (size, ratio), textcoords="offset points",
-                              xytext=(0, 8), ha="center", fontsize=8.5)
+        ax_ratio.legend(fontsize=8)
 
     fig.tight_layout()
     out = RESULTS / "data_efficiency.png"
