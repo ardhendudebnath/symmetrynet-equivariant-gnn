@@ -26,9 +26,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 RESULTS = REPO_ROOT / "results"
 DEFAULT_RUNS = Path.home() / ".symmetrynet" / "runs"
 
-# e.g. tfn_l2_f0.5_e400_s0  /  baseline_f1_e200_s0
+# e.g. tfn_l2_f0.5_e400_s0  /  baseline_f1_e200_s0  /  painn_f0.25_e200_s0
 RUN_RE = re.compile(
-    r"^(?P<model>baseline|tfn)(?:_l(?P<l_max>\d+))?(?:_(?P<flags>nobn))?"
+    r"^(?P<model>baseline|tfn|painn)(?:_l(?P<l_max>\d+))?(?:_(?P<flags>nobn))?"
     r"_f(?P<fraction>[\d.]+)_e(?P<epochs>\d+)_s(?P<seed>\d+)$"
 )
 

@@ -17,6 +17,23 @@
     "recovered_from_checkpoint": false
   },
   {
+    "run_name": "painn_f0.1_e250_s0",
+    "model": "painn",
+    "l_max": null,
+    "train_fraction": 0.1,
+    "seed": 0,
+    "epochs": 250,
+    "epochs_completed": 250,
+    "num_params": 575765,
+    "train_size": 11000,
+    "best_epoch": 189,
+    "converged": true,
+    "val_mae_meV": 121.619048618659,
+    "test_mae_meV": 122.28190641580913,
+    "minutes": 14.500506905714671,
+    "recovered_from_checkpoint": false
+  },
+  {
     "run_name": "tfn_l2_f0.1_e250_s0",
     "model": "tfn",
     "l_max": 2,
@@ -48,6 +65,23 @@
     "val_mae_meV": 97.06075119593366,
     "test_mae_meV": 98.05933186017394,
     "minutes": 9.407488723595938,
+    "recovered_from_checkpoint": false
+  },
+  {
+    "run_name": "painn_f0.25_e200_s0",
+    "model": "painn",
+    "l_max": null,
+    "train_fraction": 0.25,
+    "seed": 0,
+    "epochs": 200,
+    "epochs_completed": 200,
+    "num_params": 575765,
+    "train_size": 27500,
+    "best_epoch": 145,
+    "converged": true,
+    "val_mae_meV": 82.13557709996815,
+    "test_mae_meV": 84.11688855949266,
+    "minutes": 26.21706386009852,
     "recovered_from_checkpoint": false
   },
   {
@@ -85,6 +119,23 @@
     "recovered_from_checkpoint": false
   },
   {
+    "run_name": "painn_f0.5_e400_s0",
+    "model": "painn",
+    "l_max": null,
+    "train_fraction": 0.5,
+    "seed": 0,
+    "epochs": 400,
+    "epochs_completed": 400,
+    "num_params": 575765,
+    "train_size": 55000,
+    "best_epoch": 312,
+    "converged": true,
+    "val_mae_meV": 58.708364565495614,
+    "test_mae_meV": 58.087777222546165,
+    "minutes": 81.30608120361964,
+    "recovered_from_checkpoint": false
+  },
+  {
     "run_name": "tfn_l2_f0.5_e400_s0",
     "model": "tfn",
     "l_max": 2,
@@ -116,6 +167,23 @@
     "val_mae_meV": 55.601182248582965,
     "test_mae_meV": 56.03475318058448,
     "minutes": 36.889062345027924,
+    "recovered_from_checkpoint": false
+  },
+  {
+    "run_name": "painn_f1_e200_s0",
+    "model": "painn",
+    "l_max": null,
+    "train_fraction": 1.0,
+    "seed": 0,
+    "epochs": 200,
+    "epochs_completed": 200,
+    "num_params": 575765,
+    "train_size": 110000,
+    "best_epoch": 135,
+    "converged": true,
+    "val_mae_meV": 43.54804427340724,
+    "test_mae_meV": 43.43254765786378,
+    "minutes": 80.74594994783402,
     "recovered_from_checkpoint": false
   },
   {
