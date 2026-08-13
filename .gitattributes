@@ -1,0 +1,10 @@
+# Normalise line endings so the repository stores LF regardless of the platform it was
+# authored on. Without this, committing from Windows bakes CRLF into the objects and
+# every diff on Linux or macOS shows whole files as changed.
+* text=auto eol=lf
+
+# Binary artefacts must never be line-ending converted.
+*.png binary
+*.gif binary
+*.pt  binary
+*.zip binary

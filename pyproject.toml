@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "symmetrynet"
+version = "0.1.0"
+description = "E(3)-equivariant graph neural networks for molecular property prediction on QM9"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.7",
+    "torch-geometric>=2.6",
+    "e3nn>=0.5.6",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "matplotlib>=3.8",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6", "jupyter>=1.0", "tensorboard>=2.16"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# OneDrive denies the atomic rename pytest uses to create .pytest_cache, so the cache
+# provider is disabled rather than left to emit a warning on every run.
+addopts = "-q -p no:cacheprovider"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

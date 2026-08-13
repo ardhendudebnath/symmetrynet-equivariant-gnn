@@ -1,0 +1,32 @@
+{
+  "molecule_index": 1234,
+  "formula": "C6H10O1",
+  "num_atoms": 17,
+  "num_random_rotations": 200,
+  "dtype": "float64",
+  "trained": false,
+  "worst_relative_deviation": {
+    "Equivariant TFN (l_max=2)": 1.275874514176539e-15,
+    "Invariant baseline (distances)": 2.808437853544972e-15,
+    "Naive GNN (raw coordinates)": 0.011646274917048966,
+    "Naive MLP (raw coordinates)": 12.634034623840796
+  },
+  "worst_abs_deviation_eV": {
+    "Equivariant TFN (l_max=2)": 1.2789769243681803e-13,
+    "Invariant baseline (distances)": 7.216449660063518e-16,
+    "Naive GNN (raw coordinates)": 0.01584964618297202,
+    "Naive MLP (raw coordinates)": 0.08143904701585324
+  },
+  "prediction_scale_eV": {
+    "Equivariant TFN (l_max=2)": 100.24315950802134,
+    "Invariant baseline (distances)": 0.25695600317288486,
+    "Naive GNN (raw coordinates)": 1.3609198044749695,
+    "Naive MLP (raw coordinates)": 0.0064460047356665745
+  },
+  "peak_to_peak_over_sweep_eV": {
+    "Equivariant TFN (l_max=2)": 1.8474111129762605e-13,
+    "Invariant baseline (distances)": 9.992007221626409e-16,
+    "Naive GNN (raw coordinates)": 0.01819887229363637,
+    "Naive MLP (raw coordinates)": 0.11917900324197056
+  }
+}

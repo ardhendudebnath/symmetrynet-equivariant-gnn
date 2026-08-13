@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Testing / tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Experiment outputs (regenerable; keep results/*.json summaries only)
+checkpoints/
+runs/
+wandb/
+lightning_logs/
+*.ckpt
+*.pt
+!tests/fixtures/*.pt
+
+# Data lives outside the repo (see README: SYMMETRYNET_DATA_ROOT)
+data/
