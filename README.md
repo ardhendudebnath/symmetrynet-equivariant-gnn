@@ -57,9 +57,15 @@ computes.
 
 ## Results
 
-QM9 HOMO-LUMO gap, 110k train / 10k validation / 10,831 test, identical training loop for
-every model (same optimiser, schedule, radial basis, cutoff, readout and epoch budget —
-only `--model` changes).
+QM9 HOMO-LUMO gap, 110k train / 10k validation / 10,831 test. Every model shares one
+training loop, optimiser, learning-rate schedule, radial basis, cutoff and readout — only
+`--model` changes.
+
+**Within any single comparison the epoch budget is identical for both models.** It varies
+*between* comparisons, deliberately: the 50-vs-200-epoch result below shows the equivariant
+model needs roughly four times the baseline's schedule to converge, so a learning curve
+must train each point to convergence rather than to a fixed count. Every number quoted here
+is labelled with its budget and whether that run actually converged.
 
 <!-- RESULTS_TABLE_START -->
 
@@ -105,33 +111,39 @@ As it stands the baseline still wins, by 6%, with half the parameters and far le
 compute. That is the honest result at equal epochs. Whether the remaining 3.4 meV closes
 with a longer schedule is an open question this project has not answered.
 
-### It is not more data-efficient either
+### It is not more data-efficient — the trend runs the other way
 
-| training molecules | baseline | equivariant | ratio |
-|---|---|---|---|
-| 11,000 (10%) | **142.03** | 182.66 | 0.78× |
-| 27,500 (25%) | **98.06** | 117.31 | 0.84× |
-| 55,000 (50%) | **78.06** | 90.70 | 0.86× |
-| 110,000 (100%) | **63.82** | 78.63 | 0.81× |
+Every point below is trained to convergence rather than to a fixed epoch count. That
+distinction is not cosmetic: a point at 10% data sees a fifth as many gradient steps per
+epoch as one at 50%, so a fixed budget converges the small-data points while starving the
+large-data ones. An earlier version of this curve had exactly that defect and was
+misleading. [`scripts/consolidate_data_efficiency.py`](scripts/consolidate_data_efficiency.py)
+now checks convergence automatically and refuses to report a point silently.
+
+| training molecules | epochs | baseline | equivariant | ratio |
+|---|---|---|---|---|
+| 11,000 (10%) | 250 | **142.03** | 182.66 | 0.78× |
+| 27,500 (25%) | 200 | **98.06** | 117.31 | 0.84× |
+| 55,000 (50%) | 400 | **71.31** | 80.47 | 0.89× |
+| 110,000 (100%) | 200 | **56.03** | 59.43 | 0.94× |
 
 ![Data efficiency](results/data_efficiency.png)
 
-**The data-efficiency hypothesis is not supported — with one caveat that matters.** The
-baseline wins at every fraction. But these runs used a fixed step budget, and the
-50-vs-200-epoch result above shows the equivariant model needs a longer schedule to
-converge. Checking each point against its own budget:
+**The hypothesis is not merely unsupported — it is contradicted.** The prediction was that
+symmetry constraints would matter *most* when data is scarce, so the equivariant model
+should close the gap as the training set shrinks. The ratio instead moves monotonically in
+the opposite direction: 0.78 → 0.84 → 0.89 → 0.94 as data grows. The equivariant model's
+relative disadvantage is **largest at 10% data and smallest at 100%** — precisely backwards.
 
-| fraction | epochs | equivariant best epoch | converged? |
-|---|---|---|---|
-| 10% | 250 | 165 | yes |
-| 25% | 200 | 127 | yes |
-| 50% | 100 | 99 | **no** |
-| 100% | 50 | 49 | **no** |
+This is a stronger and more interesting result than a null one. A built-in symmetry does
+shrink the hypothesis space, but that only helps if the remaining capacity is easy to fit.
+The tensor-product model has a harder optimisation problem, and in the low-data regime
+that optimisation cost appears to outweigh the benefit of the constraint.
 
-So the two small-data points — precisely where the data-efficiency argument should be
-strongest — are converged, and the equivariant model still loses there by 20–29%. That
-half of the conclusion stands. The 50% and 100% points understate it and should be re-run
-at a longer schedule before being quoted.
+One honest caveat: the 100% equivariant point was interrupted at epoch 185/186 and its best
+epoch was its last, so it is marginally under-converged and its true ratio is slightly
+better than 0.94. That nudges the last point in the direction the hypothesis wants — but it
+cannot reverse a trend that runs monotonically across four points.
 
 **Why this is a real result and not a broken baseline.** The control lands at 63.8 meV;
 published SchNet on this exact QM9 target is ~63 meV. Reproducing the literature number

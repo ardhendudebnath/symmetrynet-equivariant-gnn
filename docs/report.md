@@ -193,15 +193,41 @@ falls monotonically 113.6 → 89.6 → 78.6 meV, a 31% reduction, with every oth
 architectural variable held fixed. That is a clean confirmation of the central
 representational claim.
 
-**The equivariant model still loses to the distance-only baseline — at every training set
-size.** 78.6 meV against 63.8 meV on the full split, and behind at 10%, 25% and 50% too
-(ratios 0.78–0.86, never once above 1.0). It uses twice the parameters and seven times the
-compute to get there.
+**The equivariant model still loses to the distance-only baseline at every training set
+size, and the data-efficiency trend runs backwards.** With every point trained to
+convergence rather than to a fixed epoch count:
+
+| training molecules | baseline | equivariant | ratio |
+|---|---|---|---|
+| 11,000 | 142.03 | 182.66 | 0.78 |
+| 27,500 | 98.06 | 117.31 | 0.84 |
+| 55,000 | 71.31 | 80.47 | 0.89 |
+| 110,000 | 56.03 | 59.43 | 0.94 |
+
+The prediction was that symmetry would matter most when data is scarce, so the gap should
+*close* as the training set shrinks. It widens instead — monotonically, across four
+points. The equivariant model's relative disadvantage is largest at 10% data and smallest
+at 100%, exactly the reverse of the hypothesis.
+
+Getting to a curve I trust took two corrections worth recording. The first version used a
+fixed epoch budget per fraction, which converges the small-data points while starving the
+large-data ones, because a 10% split has a fifth as many gradient steps per epoch. The
+second version fixed the budgets but I nearly repeated the mistake in reverse: re-running
+the 50% point at 200 epochs would have given it roughly half the updates the full split
+needed, since half the data means half the steps per epoch. The correct budget is set by
+gradient steps, not epochs — 370 rather than 200. The convergence check is now automated
+so this cannot recur silently.
 
 The project's stated hypothesis was that the equivariant model would achieve lower error
-and/or need less data. It does neither. I am reporting that rather than tuning until it
-flipped, because a comparison you keep adjusting until it agrees with you has stopped
-being a measurement.
+and/or need less data. It does neither, and on the second count the evidence points the
+other way. I am reporting that rather than tuning until it flipped, because a comparison
+you keep adjusting until it agrees with you has stopped being a measurement.
+
+The most plausible reading is that a built-in symmetry shrinks the hypothesis space, but
+that only pays off if the remaining capacity is easy to fit. The tensor-product model has
+a materially harder optimisation problem — it needed roughly four times the schedule of
+the baseline to converge at all — and in the low-data regime that cost appears to outweigh
+the benefit of the constraint.
 
 Two things make me confident this is a real result rather than a broken setup. The
 baseline lands at 63.8 meV where published SchNet on this exact target sits at ~63 meV —
