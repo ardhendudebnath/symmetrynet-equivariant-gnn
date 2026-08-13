@@ -28,8 +28,13 @@ RUNS = Path.home() / ".symmetrynet" / "runs"
 
 BASELINE_COLOR = "#2a9d5c"
 TFN_COLOR = "#1b6ca8"
-LABELS = {"baseline": "Invariant baseline (distances only)", "tfn": "Equivariant TFN"}
-COLORS = {"baseline": BASELINE_COLOR, "tfn": TFN_COLOR}
+PAINN_COLOR = "#8e44ad"
+LABELS = {
+    "baseline": "Invariant baseline (distances only)",
+    "tfn": "Equivariant TFN (Clebsch-Gordan, l<=2)",
+    "painn": "Equivariant PaiNN (vector algebra, l<=1)",
+}
+COLORS = {"baseline": BASELINE_COLOR, "tfn": TFN_COLOR, "painn": PAINN_COLOR}
 
 
 def load(name: str) -> list[dict] | None:
@@ -105,7 +110,7 @@ def plot_data_efficiency() -> None:
     ax.grid(alpha=0.25, which="both")
 
     # How much baseline data would be needed to match the equivariant model?
-    if {"baseline", "tfn"} <= by_model.keys():
+    if {"baseline", "tfn"} <= by_model.keys():  # noqa: SIM102
         base = dict(by_model["baseline"])
         tfn = dict(by_model["tfn"])
         shared = sorted(set(base) & set(tfn))

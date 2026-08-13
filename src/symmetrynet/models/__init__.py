@@ -3,7 +3,10 @@
 ``InvariantGNN``
     Distance-only baseline.  Rotation invariant, angle blind.
 ``TensorFieldNetwork``
-    E(3)-equivariant TFN built on ``e3nn``.  The proposed model.
+    E(3)-equivariant TFN built on ``e3nn``, using Clebsch-Gordan tensor products.
+``PaiNN``
+    E(3)-equivariant via scalar/vector algebra only -- no tensor products, no ``e3nn``.
+    Restricted to ``l <= 1``, and much cheaper for it.
 ``NaiveCoordinateGNN`` / ``NaiveCoordinateMLP``
     Raw-coordinate controls.  Not rotation invariant -- the failure case.
 ``ScratchTFN``
@@ -13,11 +16,13 @@
 from ..scratch.layer import ScratchTFN
 from .baseline import InvariantGNN
 from .naive import NaiveCoordinateGNN, NaiveCoordinateMLP
+from .painn import PaiNN
 from .tfn import TensorFieldNetwork, hidden_irreps
 
 MODEL_REGISTRY = {
     "baseline": InvariantGNN,
     "tfn": TensorFieldNetwork,
+    "painn": PaiNN,
     "naive": NaiveCoordinateGNN,
     "naive_mlp": NaiveCoordinateMLP,
     "scratch": ScratchTFN,
@@ -26,6 +31,7 @@ MODEL_REGISTRY = {
 __all__ = [
     "InvariantGNN",
     "TensorFieldNetwork",
+    "PaiNN",
     "NaiveCoordinateGNN",
     "NaiveCoordinateMLP",
     "ScratchTFN",

@@ -193,9 +193,44 @@ falls monotonically 113.6 → 89.6 → 78.6 meV, a 31% reduction, with every oth
 architectural variable held fixed. That is a clean confirmation of the central
 representational claim.
 
-**The equivariant model still loses to the distance-only baseline at every training set
-size, and the data-efficiency trend runs backwards.** With every point trained to
-convergence rather than to a fixed epoch count:
+**Equivariance wins decisively — but only after changing which equivariant architecture is
+used.** At a matched 200-epoch budget:
+
+| model | equivariance via | params | test MAE | time |
+|---|---|---|---|---|
+| PaiNN (`l<=1`) | vector algebra | 576k | **43.43 meV** | 81 min |
+| distance-only baseline | discards direction | 277k | 56.03 meV | 37 min |
+| TFN (`l_max=2`) | Clebsch-Gordan | 573k | 59.43 meV | 277 min |
+
+Three claims stack here, and the order they arrived in is the point of the whole project.
+
+The Tensor Field Network — the architecture the brief specifies, and the one whose
+mathematics this repository implements from scratch — is exactly equivariant and *loses*
+to a distance-only baseline that reproduces published SchNet. So equivariance by itself
+buys nothing. That was the state of the project for most of its life, and reporting it was
+uncomfortable but correct.
+
+PaiNN then beats that baseline by 22.5% and the TFN by 26.9%, with the same parameter
+count as the TFN and under a third of its compute. The symmetry group is identical, the
+target is identical, the training loop is identical. Only the mechanism differs.
+
+And the mechanism that wins has *less* angular resolution than the one that loses. The
+ablation shows `l_max=2` beating `l_max=1` by 12% inside the TFN family — a clean
+confirmation of the representational theory. Yet PaiNN, structurally incapable of
+representing anything above `l=1`, beats TFN at `l_max=2` by 27%. "More angular
+resolution is better" holds within an architecture and does not transfer across
+architectures. The binding constraint was never angular resolution. It was that
+Clebsch-Gordan tensor products cost 5x more per gradient step, and that compute buys more
+when spent on width and depth.
+
+This is the most useful thing the project produced, and it is not what I expected going
+in. The interesting question about equivariant networks is not *whether* to impose the
+symmetry — it is what you are willing to pay to impose it, because the cheapest sufficient
+construction beat the most general one.
+
+**The TFN is also not more data-efficient, and the trend runs backwards.** With every point
+trained to convergence rather than to a fixed epoch count (this sweep predates PaiNN and
+covers only the TFN):
 
 | training molecules | baseline | equivariant | ratio |
 |---|---|---|---|
@@ -218,16 +253,20 @@ needed, since half the data means half the steps per epoch. The correct budget i
 gradient steps, not epochs — 370 rather than 200. The convergence check is now automated
 so this cannot recur silently.
 
-The project's stated hypothesis was that the equivariant model would achieve lower error
-and/or need less data. It does neither, and on the second count the evidence points the
-other way. I am reporting that rather than tuning until it flipped, because a comparison
-you keep adjusting until it agrees with you has stopped being a measurement.
+The reading that ties this to the PaiNN result: a built-in symmetry shrinks the hypothesis
+space, but that only pays off if the remaining capacity is easy to fit. The tensor-product
+model has a materially harder optimisation problem — it needed roughly four times the
+baseline's schedule to converge at all — and in the low-data regime that cost outweighs the
+benefit of the constraint. PaiNN keeps the symmetry while removing most of the optimisation
+burden, which is consistent with it winning outright at full data. Whether it also inverts
+the data-efficiency trend is untested, and is the first experiment I would run next.
 
-The most plausible reading is that a built-in symmetry shrinks the hypothesis space, but
-that only pays off if the remaining capacity is easy to fit. The tensor-product model has
-a materially harder optimisation problem — it needed roughly four times the schedule of
-the baseline to converge at all — and in the low-data regime that cost appears to outweigh
-the benefit of the constraint.
+A note on how this conclusion moved. For most of the project the honest summary was
+"equivariance does not help here", and I wrote it up that way rather than tuning until it
+flipped. That was right at the time and would have been wrong to soften. But it was a
+statement about one architecture, and I should have been more careful to say so — the
+result generalised much less than the framing implied. The correction came from testing a
+second equivariant model, not from adjusting the first.
 
 Two things make me confident this is a real result rather than a broken setup. The
 baseline lands at 63.8 meV where published SchNet on this exact target sits at ~63 meV —
@@ -251,9 +290,24 @@ argument should have been strongest.
 
 ## What I would do next
 
-Predict forces rather than a scalar. Forces are ℓ=1, so the output itself is equivariant
-rather than invariant, and the architecture's advantage should be considerably larger —
-a distance-only model has to reconstruct a vector field it cannot directly represent.
-MD17 is the natural benchmark. Beyond that, the same representation-theoretic ideas apply
-to 2D image rotations through `escnn`, and writing up how the machinery differs between
-continuous 3D rotations and planar ones would sharpen the underlying intuition.
+**Re-run the data-efficiency sweep with PaiNN.** The existing curve tests the TFN, and the
+TFN turned out to be the wrong architecture to draw conclusions from. The hypothesis that
+symmetry helps most when data is scarce deserves a test against the model that actually
+works. This is cheap — PaiNN trains in under a third of the TFN's time — and it is the one
+experiment whose result I genuinely cannot predict.
+
+**Predict forces rather than a scalar.** Forces are ℓ=1, so the output itself is
+equivariant rather than invariant, and the advantage should be considerably larger: a
+distance-only model has to reconstruct a vector field it cannot directly represent. PaiNN
+is well suited to this, since its vector channels already carry exactly the right object.
+MD17 is the natural benchmark.
+
+**Test where PaiNN's `l<=1` ceiling actually binds.** The comparison here says PaiNN's
+cheaper mechanism beats the TFN's more general one on a scalar target. That should not hold
+forever — properties genuinely requiring rank-2 structure, such as polarisability or
+quadrupole moments, are where the tensor-product machinery should earn its cost back.
+Finding the crossover would say something more useful than either result alone.
+
+Beyond that, the same representation-theoretic ideas apply to 2D image rotations through
+`escnn`, and writing up how the machinery differs between continuous 3D rotations and
+planar ones would sharpen the underlying intuition.

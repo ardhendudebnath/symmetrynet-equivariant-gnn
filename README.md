@@ -18,6 +18,11 @@ equivariant models are flat to ~10⁻¹⁵ eV, which is float64 rounding noise.
 | Naive GNN (raw coordinates) | 1.2 × 10⁻² |
 | Naive MLP (raw coordinates) | 1.3 × 10¹ |
 
+PaiNN holds the same bound — its *internal vector features* are additionally verified to
+come back rotated by the correct matrix, not merely to leave the output unchanged, since
+an invariant output alone would also be produced by a model whose vector channels had
+silently collapsed to zero.
+
 Thirteen orders of magnitude, measured in float64 — see
 [`scripts/make_equivariance_plot.py`](scripts/make_equivariance_plot.py).
 
@@ -69,7 +74,7 @@ is labelled with its budget and whether that run actually converged.
 
 <!-- RESULTS_TABLE_START -->
 
-### The angular ablation works exactly as the theory predicts
+### The angular ablation works exactly as the theory predicts — within one architecture
 
 `l_max = 0` is the informative control: a *fully equivariant* architecture in which the
 selection rule permits only `0 ⊗ 0 → 0`, so no angular path exists at all. Raising
@@ -84,34 +89,65 @@ selection rule permits only `0 ⊗ 0 → 0`, so no angular path exists at all. R
 ![l_max ablation](results/ablation_lmax.png)
 
 Monotone, −31% from `l_max=0` to `l_max=2`. Angular information is measurably worth
-something, and the effect is isolated from every other architectural variable. Note the
+something, and the effect is isolated from every other architectural variable.
+
+The caveat is important and easy to miss: this holds *within* the TFN family. PaiNN caps
+out at `l<=1` and still beats TFN at `l_max=2` by 27%, so the ablation must not be read as
+"higher `l_max` is better, full stop". It says angular information helps once you have
+already committed to this architecture. Note the
 baseline line already sits below all three bars — which is the next result.
 
-### Against the distance-only baseline — and why the training budget dominates
+### The headline: equivariance wins, but only with the right architecture
 
-Run both models at 50 epochs and the equivariant model looks badly beaten. Run both at
-200, changing nothing else, and most of that gap disappears:
+All three at 200 epochs, same loop, same data, same schedule:
+
+| model | equivariance via | params | test MAE | train time |
+|---|---|---|---|---|
+| **Equivariant PaiNN** (`l<=1`) | vector algebra | 576k | **43.43 meV** | 81 min |
+| Distance-only baseline | discards direction | 277k | 56.03 meV | 37 min |
+| Equivariant TFN (`l_max=2`) | Clebsch-Gordan products | 573k | 59.43 meV | 277 min |
+
+PaiNN beats the baseline by **22.5%** and the TFN by **26.9%** — and does it in under a
+third of the TFN's compute at the same parameter count. Published PaiNN on this exact
+target is 45.7 meV; this implementation reaches 43.43, so it is a faithful one.
+
+**Three findings sit on top of each other here, and the order matters.**
+
+*Equivariance alone is not the win.* The TFN is exactly equivariant and still loses to a
+distance-only baseline that reproduces published SchNet. Building in the symmetry does not
+by itself buy accuracy.
+
+*The right equivariant architecture wins decisively.* Same symmetry group, same target,
+same budget — a 22.5% improvement over the strongest non-equivariant model here.
+
+*And the winner has **less** angular resolution than the loser.* The ablation below shows
+`l_max=2` beats `l_max=1` by 12% inside the TFN family. Yet PaiNN, structurally capped at
+`l<=1`, beats TFN at `l_max=2` by 27%. So "more angular resolution is better" is true
+*within* an architecture and does not transfer *across* architectures. The binding
+constraint was never angular resolution — it was that Clebsch-Gordan tensor products cost
+5× more per step, and that compute buys more when spent on width and depth.
+
+<details>
+<summary>How the training budget confounded an earlier version of this comparison</summary>
+
+At 50 epochs the TFN looked far worse (78.63 vs 63.82). Quadrupling the schedule closed
+most of that gap, because the two models converge at very different rates:
 
 | model | 50 epochs | 200 epochs | change | best epoch (of 200) |
 |---|---|---|---|---|
-| Distance-only baseline | 63.82 meV | **56.03 meV** | −12.2% | 111 — converged, then flat |
-| Equivariant TFN (`l_max=2`) | 78.63 meV | **59.43 meV** | −24.4% | 184 — still improving |
-| **gap** | 14.81 meV (23.2%) | **3.40 meV (6.1%)** | | |
+| Distance-only baseline | 63.82 meV | 56.03 meV | −12.2% | 111 — converged, then flat |
+| Equivariant TFN | 78.63 meV | 59.43 meV | −24.4% | 184 — still improving |
 
-The equivariant model is far more budget-sensitive: quadrupling the schedule bought it
-twice the improvement it bought the baseline. The first comparison was not measuring
-which architecture is better, it was mostly measuring which one converges faster.
+The short-budget comparison was mostly measuring which model converges faster, not which
+is better. Every number quoted above uses the 200-epoch runs.
+</details>
 
-The detail that matters for interpretation is in the last column. At 200 epochs the
-baseline peaked at epoch 111 and then went flat — it is done. The equivariant model's best
-epoch was its *last*. It is still descending, just slowly (~0.01 meV/epoch over the final
-ten), so it remains budget-limited where the baseline no longer is.
+### The TFN is not more data-efficient — the trend runs the other way
 
-As it stands the baseline still wins, by 6%, with half the parameters and far less
-compute. That is the honest result at equal epochs. Whether the remaining 3.4 meV closes
-with a longer schedule is an open question this project has not answered.
-
-### It is not more data-efficient — the trend runs the other way
+**Scope:** this sweep compares the **TFN** against the baseline. It predates the PaiNN
+result and does not include it, so it says nothing about whether *equivariance* is
+data-efficient in general — only about the Clebsch-Gordan architecture. Re-running it with
+PaiNN is the obvious next experiment and is listed under future work.
 
 Every point below is trained to convergence rather than to a fixed epoch count. That
 distinction is not cosmetic: a point at 10% data sees a fifth as many gradient steps per
@@ -129,16 +165,18 @@ now checks convergence automatically and refuses to report a point silently.
 
 ![Data efficiency](results/data_efficiency.png)
 
-**The hypothesis is not merely unsupported — it is contradicted.** The prediction was that
-symmetry constraints would matter *most* when data is scarce, so the equivariant model
-should close the gap as the training set shrinks. The ratio instead moves monotonically in
-the opposite direction: 0.78 → 0.84 → 0.89 → 0.94 as data grows. The equivariant model's
+**For the TFN the hypothesis is not merely unsupported — it is contradicted.** The
+prediction was that symmetry constraints would matter *most* when data is scarce, so the
+equivariant model should close the gap as the training set shrinks. The ratio instead moves
+monotonically in the opposite direction: 0.78 → 0.84 → 0.89 → 0.94 as data grows. The TFN's
 relative disadvantage is **largest at 10% data and smallest at 100%** — precisely backwards.
 
-This is a stronger and more interesting result than a null one. A built-in symmetry does
-shrink the hypothesis space, but that only helps if the remaining capacity is easy to fit.
-The tensor-product model has a harder optimisation problem, and in the low-data regime
-that optimisation cost appears to outweigh the benefit of the constraint.
+This fits the PaiNN result rather than contradicting it. A built-in symmetry shrinks the
+hypothesis space, but that only pays off if the remaining capacity is easy to fit. The
+tensor-product model has a materially harder optimisation problem — it needed roughly four
+times the baseline's schedule to converge at all — and in the low-data regime that cost
+outweighs the benefit of the constraint. PaiNN keeps the symmetry while removing most of
+the optimisation burden, which is consistent with it winning outright at full data.
 
 One honest caveat: the 100% equivariant point was interrupted at epoch 185/186 and its best
 epoch was its last, so it is marginally under-converged and its true ratio is slightly
@@ -183,7 +221,8 @@ src/symmetrynet/
 │   └── layer.py                 a complete TFN layer and small model
 ├── models/
 │   ├── baseline.py     distance-only invariant GNN (the control)
-│   ├── tfn.py          the full e3nn Tensor Field Network
+│   ├── tfn.py          e3nn Tensor Field Network — Clebsch-Gordan products, l<=2
+│   ├── painn.py        PaiNN — equivariant via vector algebra alone, l<=1 (best result)
 │   └── naive.py        raw-coordinate models (the failure case)
 ├── nn/radial.py        Bessel / Gaussian bases and smooth cutoffs (shared by all models)
 ├── data/qm9.py         splits, standardization, data-efficiency subsets

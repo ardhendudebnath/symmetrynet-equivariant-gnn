@@ -26,5 +26,19 @@
     "val_mae_meV": 58.60338315625124,
     "test_mae_meV": 59.434075639117225,
     "minutes": 276.5816666666666
+  },
+  {
+    "run_name": "painn_f1_e200_s0",
+    "model": "painn",
+    "l_max": null,
+    "train_fraction": 1.0,
+    "seed": 0,
+    "epochs": 200,
+    "num_params": 575765,
+    "train_size": 110000,
+    "best_epoch": 135,
+    "val_mae_meV": 43.54804427340724,
+    "test_mae_meV": 43.43254765786378,
+    "minutes": 80.74594994783402
   }
 ]
