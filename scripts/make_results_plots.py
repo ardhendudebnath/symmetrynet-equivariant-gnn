@@ -205,6 +205,64 @@ def write_table() -> None:
     print(f"wrote {out}")
 
 
+def plot_multiseed() -> None:
+    """The data-efficiency trend with error bars across seeds.
+
+    This is the figure the headline claim rests on, so it shows the spread rather than
+    only the mean: the per-seed panel on the right is what makes "unanimous" checkable
+    by eye instead of taken on trust.
+    """
+    path = RESULTS / "multiseed.json"
+    if not path.exists():
+        print(f"skip multiseed: {path} not found")
+        return
+    payload = json.loads(path.read_text())
+    per_fraction = payload["per_fraction"]
+    seeds = payload["seeds"]
+    if not per_fraction:
+        return
+
+    sizes = [row["train_size"] for row in per_fraction]
+    means = np.array([row["mean"] for row in per_fraction])
+    stds = np.array([row["std"] for row in per_fraction])
+
+    fig, (ax, ax_seeds) = plt.subplots(1, 2, figsize=(12.6, 4.8))
+
+    ax.errorbar(sizes, means, yerr=stds, fmt="o-", color=PAINN_COLOR, lw=2.2, ms=8,
+                capsize=5, capthick=1.5, label=f"mean $\\pm$ sd over {len(seeds)} seeds")
+    ax.fill_between(sizes, means - stds, means + stds, color=PAINN_COLOR, alpha=0.15)
+    ax.axhline(1.0, color="0.55", ls="--", lw=1.2)
+    ax.text(sizes[0], 1.005, " parity with the distance-only baseline",
+            fontsize=8, color="0.4", va="bottom")
+    ax.set_xscale("log")
+    ax.set_xlabel("training molecules")
+    ax.set_ylabel("baseline MAE / PaiNN MAE")
+    ax.set_title("Equivariant advantage vs dataset size\n"
+                 "the advantage GROWS with data — opposite to the usual claim",
+                 fontsize=11)
+    ax.legend(fontsize=9, loc="upper left")
+    ax.grid(alpha=0.25, which="both")
+
+    shades = plt.cm.viridis(np.linspace(0.15, 0.75, len(seeds)))
+    for colour, seed in zip(shades, seeds, strict=True):
+        values = [row["ratios"][str(seed)] if str(seed) in row["ratios"]
+                  else row["ratios"].get(seed) for row in per_fraction]
+        ax_seeds.plot(sizes, values, "o-", color=colour, lw=1.8, ms=6, label=f"seed {seed}")
+    ax_seeds.axhline(1.0, color="0.55", ls="--", lw=1.2)
+    ax_seeds.set_xscale("log")
+    ax_seeds.set_xlabel("training molecules")
+    ax_seeds.set_ylabel("baseline MAE / PaiNN MAE")
+    ax_seeds.set_title("Every seed individually\n"
+                       "each drives a different train/val/test split", fontsize=11)
+    ax_seeds.legend(fontsize=9)
+    ax_seeds.grid(alpha=0.25, which="both")
+
+    fig.tight_layout()
+    out = RESULTS / "multiseed.png"
+    fig.savefig(out, dpi=170)
+    print(f"wrote {out}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()
@@ -212,6 +270,7 @@ def main() -> None:
     plot_training_curves()
     plot_data_efficiency()
     plot_ablation()
+    plot_multiseed()
     write_table()
 
 

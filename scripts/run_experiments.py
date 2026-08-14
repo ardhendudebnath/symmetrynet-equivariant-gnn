@@ -189,10 +189,57 @@ def suite_ablation(args) -> list[TrainConfig]:
     return [_base(args, model="tfn", l_max=ell) for ell in (0, 1, 2)]
 
 
+#: Epoch budget per training fraction, chosen empirically so every point *converges*
+#: rather than hitting its cap while still improving.  These are not proportional to the
+#: data size: a 10% split has a tenth as many gradient steps per epoch, so it needs many
+#: more epochs, while its smaller training set also converges in fewer total steps.
+#: Verified against seed 0 -- best epochs came out 135-189 (of 250), 109-145 (of 200),
+#: 178-312 (of 400) and 111-135 (of 200), all comfortably inside budget.
+CONVERGED_EPOCHS = {0.1: 250, 0.25: 200, 0.5: 400, 1.0: 200}
+
+#: Per-model hyperparameters, pinned to exactly what seed 0 ran.  Replication is
+#: worthless if the replicas differ from the original in some quiet default.
+MODEL_HPARAMS = {
+    "baseline": {"hidden": 128, "num_layers": 4, "num_radial": 8},
+    "painn": {"hidden": 128, "num_layers": 3, "num_radial": 20},
+}
+
+
+def suite_multiseed(args) -> list[TrainConfig]:
+    """The data-efficiency grid repeated over several seeds, for error bars.
+
+    The finding under test -- that the equivariant advantage *grows* with dataset size,
+    contradicting the usual data-efficiency claim -- currently rests on a single seed. A
+    contrarian result without error bars is not a result.
+
+    Note that ``seed`` drives both the train/val/test split and the weight
+    initialisation. That is deliberate: within one seed the two models see byte-identical
+    data, so the per-seed *ratio* is a clean paired comparison, while across seeds the
+    split changes, so a trend that survives is robust to the particular split rather than
+    an artifact of one lucky partition.
+    """
+    configs = []
+    for seed in args.seeds:
+        for fraction, epochs in CONVERGED_EPOCHS.items():
+            for model, hparams in MODEL_HPARAMS.items():
+                cfg = _base(
+                    args,
+                    model=model,
+                    train_fraction=fraction,
+                    epochs=epochs,
+                    seed=seed,
+                    **hparams,
+                )
+                cfg.run_name = canonical_run_name(cfg)
+                configs.append(cfg)
+    return configs
+
+
 SUITES = {
     "comparison": suite_comparison,
     "data_efficiency": suite_data_efficiency,
     "ablation": suite_ablation,
+    "multiseed": suite_multiseed,
 }
 
 
@@ -206,6 +253,13 @@ def main() -> None:
     parser.add_argument("--hidden", type=int, default=128)
     parser.add_argument("--num_layers", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=[0, 1, 2],
+        help="seeds for the multiseed suite (each drives both the split and the init)",
+    )
     parser.add_argument("--patience", type=int, default=25)
     parser.add_argument("--out_dir", type=str, default=str(DEFAULT_RUN_DIR))
     parser.add_argument(

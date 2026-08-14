@@ -9,11 +9,11 @@
     "epochs_completed": 250,
     "num_params": 277257,
     "train_size": 11000,
-    "best_epoch": 135,
+    "best_epoch": 128,
     "converged": true,
-    "val_mae_meV": 141.17191171287288,
-    "test_mae_meV": 142.02689309894885,
-    "minutes": 5.899219107627869,
+    "val_mae_meV": 140.76032001689128,
+    "test_mae_meV": 142.6619140971907,
+    "minutes": 6.275999689102173,
     "recovered_from_checkpoint": false
   },
   {
@@ -60,11 +60,11 @@
     "epochs_completed": 200,
     "num_params": 277257,
     "train_size": 27500,
-    "best_epoch": 109,
+    "best_epoch": 116,
     "converged": true,
-    "val_mae_meV": 97.06075119593366,
-    "test_mae_meV": 98.05933186017394,
-    "minutes": 9.407488723595938,
+    "val_mae_meV": 97.59769214735009,
+    "test_mae_meV": 98.97270290164843,
+    "minutes": 10.975174438953399,
     "recovered_from_checkpoint": false
   },
   {
