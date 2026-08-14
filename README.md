@@ -207,6 +207,39 @@ The TFN shows the same *direction* while losing outright throughout (0.78 → 0.
 0), so this is not a quirk of one architecture: two equivariant models, opposite outcomes,
 same trend.
 
+### What the growing ratio actually means: equivariance buys a steeper exponent
+
+The ratio table is descriptive. The same runs support a sharper claim. Error curves here
+follow a power law tightly — `MAE(N) ≈ A·N^(−b)`, with **R² ≥ 0.997** on every single fit —
+so the exponent `b` is a meaningful quantity rather than a line forced through scatter.
+
+| model | scaling exponent `b` |
+|---|---|
+| Distance-only baseline | **0.406 ± 0.006** |
+| Equivariant PaiNN | **0.462 ± 0.006** |
+| **difference** | **+0.056 ± 0.010** (steeper in 3/3 seeds, ≈5 sd) |
+
+![Scaling exponents](results/scaling.png)
+
+This explains the growing ratio rather than merely restating it. Taking the ratio of two
+power laws gives `(A_base/A_equi)·N^(b_equi − b_base)`, so the ratio can *only* grow with
+`N` if the equivariant exponent is steeper. It is, by 14% relative.
+
+**And that reframes the whole result.** "Data efficiency" as usually claimed means a better
+*offset* — fewer samples to reach a given error, so the advantage is largest when data is
+scarce. That is not what equivariance buys here. It buys a better *exponent*: the rate at
+which error falls with data improves. Those are different mechanisms with opposite
+signatures, and this measurement distinguishes them.
+
+Arguably the exponent is the more valuable of the two. An offset advantage is a fixed
+discount; an exponent advantage compounds with every molecule added. So the honest summary
+is not "equivariance failed to deliver data efficiency" but **"equivariance improves scaling
+rather than sample efficiency"** — a more specific and more useful statement than the
+hypothesis it replaces.
+
+Reproduce with [`scripts/fit_scaling.py`](scripts/fit_scaling.py); fitted values in
+[`results/scaling.json`](results/scaling.json).
+
 **This also falsifies my own earlier explanation.** When only the TFN had been tested, I
 attributed its backwards trend to optimisation difficulty — the tensor-product model needed
 roughly four times the baseline's schedule to converge, and I argued that cost outweighed
