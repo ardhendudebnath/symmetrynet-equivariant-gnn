@@ -163,23 +163,41 @@ def main() -> None:
     print(f"\n{'=' * 78}\nforce sweep complete: {len(results)}/{len(configs)}\n{'=' * 78}")
     print(f"{'run':<38s} {'N':>6s} {'force MAE':>11s} {'converged':>10s} {'min':>7s}")
 
-    # A run whose best epoch sits at the end of its schedule was still improving when the
-    # budget expired, so its number understates the model. Reporting such a run next to a
-    # converged one is not a comparison. This check exists because its absence is exactly
-    # what invalidated the first version of this sweep.
+    # This flags whether a run finished its schedule. It does NOT prove the schedule was
+    # long enough, and the distinction cost a sweep to learn.
+    #
+    # The obvious test -- "best epoch landed near the end, so it was still improving" --
+    # false-positives on flat curves, where the argmin sits anywhere in the plateau by
+    # noise alone: a validated run here was at 94% of its schedule having improved 0.05%
+    # over its final tenth. Measuring the improvement *rate* fixes that.
+    #
+    # But neither test detects an insufficient budget. A short cosine schedule anneals the
+    # learning rate to zero, so the curve flattens whether or not the model has reached its
+    # potential. Measured directly: a 25k-step run showed a reassuring 0.39% tail gain and
+    # was still beaten by 20% at 200k steps. Budget sufficiency can only be established by
+    # comparing budgets, which is why TARGET_STEPS was validated that way rather than by
+    # trusting a flat tail.
     stale = []
     for r in results:
-        completed = len(r["history"]) if r.get("history") else r["config"]["epochs"]
-        converged = r["best_epoch"] < completed * 0.92
+        history = r.get("history") or []
+        converged, tail_gain = True, 0.0
+        if len(history) >= 10:
+            curve = [h["val_force_mae"] for h in history]
+            reference = curve[int(len(curve) * 0.9)]
+            best = min(curve)
+            tail_gain = (reference - best) / reference if reference > 0 else 0.0
+            converged = tail_gain < 0.005  # still falling by <0.5% over the final tenth
+        r["_tail_gain"] = tail_gain
         if not converged:
-            stale.append(r["run_name"])
+            stale.append(f"{r['run_name']} (still improving {tail_gain * 100:.1f}%)")
+        flag = "NO" if any(r["run_name"] in s for s in stale) else "yes"
         print(f"{r['run_name']:<38s} {r['config']['train_size']:>6d} "
-              f"{r['test_force_mae']:>11.4f} {('yes' if converged else 'NO'):>10s} "
+              f"{r['test_force_mae']:>11.4f} {flag:>10s} "
               f"{r['total_seconds'] / 60:>7.1f}")
 
     if stale:
-        print("\nWARNING: these runs hit their budget while still improving, so their")
-        print("numbers understate the model and must not be quoted as converged:")
+        print("\nWARNING: these runs were still improving when the budget expired, so")
+        print("their numbers understate the model and must not be quoted as converged:")
         for name in stale:
             print(f"  {name}")
         print("\nRaise TARGET_STEPS and re-run before drawing any conclusion.")
