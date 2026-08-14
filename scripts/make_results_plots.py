@@ -212,9 +212,9 @@ def plot_multiseed() -> None:
     only the mean: the per-seed panel on the right is what makes "unanimous" checkable
     by eye instead of taken on trust.
     """
-    path = RESULTS / "multiseed.json"
+    path = RESULTS / "multiseed_analysis.json"
     if not path.exists():
-        print(f"skip multiseed: {path} not found")
+        print(f"skip multiseed: {path} not found (run scripts/analyze_multiseed.py)")
         return
     payload = json.loads(path.read_text())
     per_fraction = payload["per_fraction"]

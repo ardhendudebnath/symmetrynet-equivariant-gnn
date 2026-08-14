@@ -71,7 +71,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runs-dir", default=str(DEFAULT_RUNS))
     parser.add_argument("--equivariant", default="painn", choices=["painn", "tfn"])
-    parser.add_argument("--out", default=str(RESULTS / "multiseed.json"))
+    # Deliberately *not* multiseed.json: run_experiments.py's multiseed suite writes its
+    # own run summary under that name, and the two files have different schemas. Sharing
+    # a filename meant whichever ran last silently clobbered the other.
+    parser.add_argument("--out", default=str(RESULTS / "multiseed_analysis.json"))
     args = parser.parse_args()
 
     records = collect(Path(args.runs_dir))

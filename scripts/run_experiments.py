@@ -269,11 +269,15 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # The multiseed suite sets its epoch budget per fraction and ignores --epochs, so
+    # tagging it "e50" would label the file with a number none of its runs used.
+    tag = f"s{''.join(str(s) for s in args.seeds)}" if args.suite == "multiseed" \
+        else f"e{args.epochs}"
     _run_all(
         args.suite,
         SUITES[args.suite](args),
         skip_existing=not args.retrain,
-        tag=f"e{args.epochs}",
+        tag=tag,
     )
 
 
