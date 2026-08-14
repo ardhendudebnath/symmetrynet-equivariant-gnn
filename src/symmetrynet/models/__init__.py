@@ -15,6 +15,7 @@
 
 from ..scratch.layer import ScratchTFN
 from .baseline import InvariantGNN
+from .forces import ForceModel
 from .naive import NaiveCoordinateGNN, NaiveCoordinateMLP
 from .painn import PaiNN
 from .tfn import TensorFieldNetwork, hidden_irreps
@@ -35,6 +36,7 @@ __all__ = [
     "NaiveCoordinateGNN",
     "NaiveCoordinateMLP",
     "ScratchTFN",
+    "ForceModel",
     "hidden_irreps",
     "MODEL_REGISTRY",
 ]
