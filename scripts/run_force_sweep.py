@@ -45,8 +45,29 @@ DEFAULT_RUNS = Path.home() / ".symmetrynet" / "runs_md17"
 #: Training sizes, in MD17's conventional small-data regime (papers quote N=1000).
 TRAIN_SIZES = (250, 500, 1000, 2000)
 
-#: Epochs per size, giving each point ~25k gradient steps at batch size 16.
-EPOCHS = {250: 1600, 500: 800, 1000: 400, 2000: 200}
+#: Gradient steps per run, which is the budget that actually matters.
+#:
+#: The first version of this sweep fixed *epochs* per size to equalise steps at ~25k, and
+#: every single run then finished with its best epoch at or next to the last -- i.e. none
+#: of them converged, and the comparison was meaningless. The tail improvements looked
+#: small only because the cosine schedule had annealed the learning rate to zero, the same
+#: trap that made the TFN look 24% worse than it was on QM9.
+#:
+#: 200k steps is ~8x that budget, chosen from measured throughput (~17 ms/step, so ~1 h per
+#: run). Runs that genuinely converge stop earlier via patience; runs that do not are
+#: flagged rather than quietly reported.
+TARGET_STEPS = 200_000
+
+#: Fraction of the budget a run may stall for before early stopping. Expressed as a
+#: fraction rather than a fixed epoch count because an "epoch" at N=250 is 16 steps and at
+#: N=2000 is 125 -- a flat patience would be eight times stricter at the small end.
+PATIENCE_FRACTION = 0.15
+
+
+def epochs_for(train_size: int, batch_size: int) -> int:
+    """Epochs needed to reach ``TARGET_STEPS`` gradient updates at this training size."""
+    steps_per_epoch = max(1, -(-train_size // batch_size))  # ceil division
+    return max(1, TARGET_STEPS // steps_per_epoch)
 
 #: Pinned per-model hyperparameters, matching the QM9 experiments so the two studies are
 #: comparable rather than merely adjacent.
@@ -60,18 +81,21 @@ def build_configs(args) -> list[ForceTrainConfig]:
     configs = []
     for seed in args.seeds:
         for size in TRAIN_SIZES:
+            epochs = epochs_for(size, args.batch_size)
             for model, hparams in MODEL_HPARAMS.items():
                 configs.append(
                     ForceTrainConfig(
                         model=model,
                         molecule=args.molecule,
                         train_size=size,
-                        epochs=EPOCHS[size],
+                        epochs=epochs,
                         batch_size=args.batch_size,
-                        patience=args.patience,
+                        patience=int(epochs * PATIENCE_FRACTION),
                         seed=seed,
                         out_dir=args.out_dir,
-                        run_name=f"{model}_{args.molecule}_n{size}_s{seed}",
+                        # Budget is in the name: a run trained to a different step count
+                        # is a different experiment and must not silently be reused.
+                        run_name=f"{model}_{args.molecule}_n{size}_e{epochs}_s{seed}",
                         **hparams,
                     )
                 )
@@ -137,10 +161,28 @@ def main() -> None:
         (RESULTS / "md17_forces.json").write_text(json.dumps(summary, indent=2))
 
     print(f"\n{'=' * 78}\nforce sweep complete: {len(results)}/{len(configs)}\n{'=' * 78}")
-    print(f"{'run':<34s} {'N':>6s} {'force MAE':>11s} {'min':>7s}")
+    print(f"{'run':<38s} {'N':>6s} {'force MAE':>11s} {'converged':>10s} {'min':>7s}")
+
+    # A run whose best epoch sits at the end of its schedule was still improving when the
+    # budget expired, so its number understates the model. Reporting such a run next to a
+    # converged one is not a comparison. This check exists because its absence is exactly
+    # what invalidated the first version of this sweep.
+    stale = []
     for r in results:
-        print(f"{r['run_name']:<34s} {r['config']['train_size']:>6d} "
-              f"{r['test_force_mae']:>11.4f} {r['total_seconds'] / 60:>7.1f}")
+        completed = len(r["history"]) if r.get("history") else r["config"]["epochs"]
+        converged = r["best_epoch"] < completed * 0.92
+        if not converged:
+            stale.append(r["run_name"])
+        print(f"{r['run_name']:<38s} {r['config']['train_size']:>6d} "
+              f"{r['test_force_mae']:>11.4f} {('yes' if converged else 'NO'):>10s} "
+              f"{r['total_seconds'] / 60:>7.1f}")
+
+    if stale:
+        print("\nWARNING: these runs hit their budget while still improving, so their")
+        print("numbers understate the model and must not be quoted as converged:")
+        for name in stale:
+            print(f"  {name}")
+        print("\nRaise TARGET_STEPS and re-run before drawing any conclusion.")
 
 
 if __name__ == "__main__":
