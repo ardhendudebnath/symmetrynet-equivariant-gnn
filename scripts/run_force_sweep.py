@@ -64,10 +64,10 @@ TARGET_STEPS = 200_000
 PATIENCE_FRACTION = 0.15
 
 
-def epochs_for(train_size: int, batch_size: int) -> int:
-    """Epochs needed to reach ``TARGET_STEPS`` gradient updates at this training size."""
+def epochs_for(train_size: int, batch_size: int, target_steps: int = TARGET_STEPS) -> int:
+    """Epochs needed to reach ``target_steps`` gradient updates at this training size."""
     steps_per_epoch = max(1, -(-train_size // batch_size))  # ceil division
-    return max(1, TARGET_STEPS // steps_per_epoch)
+    return max(1, target_steps // steps_per_epoch)
 
 #: Pinned per-model hyperparameters, matching the QM9 experiments so the two studies are
 #: comparable rather than merely adjacent.
@@ -79,10 +79,19 @@ MODEL_HPARAMS = {
 
 def build_configs(args) -> list[ForceTrainConfig]:
     configs = []
+    #: Aim for roughly this many validation passes per run. Enough to resolve the curve
+    #: and pick a good checkpoint, without spending most of the run on evaluation.
+    target_validations = 800
+
     for seed in args.seeds:
         for size in TRAIN_SIZES:
-            epochs = epochs_for(size, args.batch_size)
+            epochs = epochs_for(size, args.batch_size, args.target_steps)
+            val_every = max(1, epochs // target_validations)
+            # patience counts validations, so convert the fraction-of-budget into that unit
+            patience = max(10, int(epochs * PATIENCE_FRACTION / val_every))
             for model, hparams in MODEL_HPARAMS.items():
+                if model not in args.models:
+                    continue
                 configs.append(
                     ForceTrainConfig(
                         model=model,
@@ -90,7 +99,8 @@ def build_configs(args) -> list[ForceTrainConfig]:
                         train_size=size,
                         epochs=epochs,
                         batch_size=args.batch_size,
-                        patience=int(epochs * PATIENCE_FRACTION),
+                        patience=patience,
+                        val_every=val_every,
                         seed=seed,
                         out_dir=args.out_dir,
                         # Budget is in the name: a run trained to a different step count
@@ -121,6 +131,15 @@ def main() -> None:
     parser.add_argument("--patience", type=int, default=100)
     parser.add_argument("--out_dir", default=str(DEFAULT_RUNS))
     parser.add_argument("--retrain", action="store_true")
+    parser.add_argument(
+        "--target-steps", type=int, default=TARGET_STEPS,
+        help="gradient updates per run; raise it for models that have not converged",
+    )
+    parser.add_argument(
+        "--models", nargs="+", default=list(MODEL_HPARAMS),
+        choices=list(MODEL_HPARAMS),
+        help="restrict to specific models, e.g. to re-train only the one that stalled",
+    )
     args = parser.parse_args()
 
     configs = build_configs(args)
