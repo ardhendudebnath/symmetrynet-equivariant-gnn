@@ -175,21 +175,37 @@ now checks convergence automatically and refuses to report a point silently.
 
 ![Data efficiency](results/data_efficiency.png)
 
-**PaiNN beats the baseline at every training set size** — 1.16× at 11k molecules rising to
-1.29× at 110k. That is a real, architecture-level win for equivariance, not an artifact of
-one operating point.
+**PaiNN beats the baseline at every training set size** — a real, architecture-level win
+for equivariance, not an artifact of one operating point.
 
-**And yet the data-efficiency hypothesis is contradicted for both equivariant models.** The
-prediction was that symmetry constraints matter *most* when data is scarce, so the
-equivariant advantage should be largest at the left of the plot and shrink to the right.
-Both curves slope the opposite way:
+**And yet the data-efficiency hypothesis is contradicted, and this replicates across
+seeds.** The prediction was that symmetry constraints matter *most* when data is scarce, so
+the equivariant advantage should be largest at the left of the plot and shrink to the
+right. It does the opposite. Repeating the whole grid over **3 seeds** — each driving a
+different train/val/test split *and* a different initialisation:
 
-- PaiNN: 1.16 → 1.29 (wins everywhere, but by **less** when data is scarce)
-- TFN: 0.78 → 0.94 (loses everywhere, and by **more** when data is scarce)
+| training molecules | seed 0 | seed 1 | seed 2 | mean ± sd |
+|---|---|---|---|---|
+| 11,000 | 1.167 | 1.119 | 1.081 | **1.122 ± 0.043** |
+| 27,500 | 1.177 | 1.149 | 1.140 | **1.155 ± 0.019** |
+| 55,000 | 1.228 | 1.235 | 1.196 | **1.220 ± 0.021** |
+| 110,000 | 1.290 | 1.286 | 1.240 | **1.272 ± 0.028** |
 
-Two different equivariant architectures, one winning and one losing, with the same
-qualitative trend. On this target, the benefit of built-in symmetry *grows* with data
-rather than shrinking.
+![Multi-seed data efficiency](results/multiseed.png)
+
+- Monotone in the mean across all four sizes
+- The advantage grows with data in **3 of 3 seeds** — unanimous
+- Gap between extremes **+0.150** against a pooled sd of **0.051** — separated at ~3 sd
+
+Within a seed both models see byte-identical data, so each ratio is a paired comparison;
+across seeds the split changes, so a trend surviving all three is robust to the partition
+rather than an artifact of one lucky draw. With n=3, a t-test p-value would be false
+precision — unanimity plus non-overlapping spread is the strongest claim three seeds
+support, and that is what is reported.
+
+The TFN shows the same *direction* while losing outright throughout (0.78 → 0.94 at seed
+0), so this is not a quirk of one architecture: two equivariant models, opposite outcomes,
+same trend.
 
 **This also falsifies my own earlier explanation.** When only the TFN had been tested, I
 attributed its backwards trend to optimisation difficulty — the tensor-product model needed

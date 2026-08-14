@@ -248,6 +248,36 @@ is scarce; the TFN loses everywhere and by more when data is scarce.
 Two architectures, opposite outcomes, identical trend. On this target the benefit of a
 built-in symmetry grows with data rather than shrinking.
 
+**Replicated over three seeds.** A result that contradicts a widely-repeated claim should
+not rest on one run, so the whole grid was repeated with three seeds, each driving a
+different train/val/test split as well as a different initialisation:
+
+| training molecules | seed 0 | seed 1 | seed 2 | mean ± sd |
+|---|---|---|---|---|
+| 11,000 | 1.167 | 1.119 | 1.081 | 1.122 ± 0.043 |
+| 27,500 | 1.177 | 1.149 | 1.140 | 1.155 ± 0.019 |
+| 55,000 | 1.228 | 1.235 | 1.196 | 1.220 ± 0.021 |
+| 110,000 | 1.290 | 1.286 | 1.240 | 1.272 ± 0.028 |
+
+The mean is monotone across all four sizes, the direction is unanimous in 3/3 seeds, and
+the gap between the extremes (+0.150) is roughly three times the pooled standard deviation
+(0.051). Within a seed the two models see byte-identical data, so each ratio is a paired
+comparison; across seeds the split changes, so surviving all three means the effect is not
+an artifact of one partition.
+
+I deliberately did not compute a p-value. With three seeds a t-test would manufacture
+precision that the sample size cannot support. Unanimity of direction plus non-overlapping
+spread at the extremes is the strongest honest statement available, and the analysis script
+is written to report exactly that — including a branch that prints "seeds disagree; no
+directional claim is supported" had the replication failed.
+
+One protocol detail worth recording: seed 0's two smallest baseline runs were originally
+trained with a shorter early-stopping patience than everything else. Early stopping only
+truncates *after* the best checkpoint, so the effect is second-order, but it would have
+biased the baseline slightly worse at small data — inflating the equivariant ratio exactly
+where the finding claims it is smallest, i.e. in the direction of the conclusion. Both were
+retrained under the common protocol before any of this was reported.
+
 This also falsifies the explanation I offered when only the TFN had been measured. I had
 attributed its backwards trend to optimisation difficulty: the tensor-product model needed
 roughly four times the baseline's schedule to converge, and I argued that cost swamped the
