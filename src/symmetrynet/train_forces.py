@@ -55,6 +55,12 @@ class ForceTrainConfig:
     num_radial: int = 20
     seed: int = 0
     patience: int = 50
+    # Validate every N epochs. At small training sizes an "epoch" is a handful of steps,
+    # so validating every one means thousands of full passes over 1000 configurations --
+    # each needing a backward pass, since forces are gradients. Evaluating less often
+    # costs a little resolution on the curve and saves most of the wall time.
+    # `patience` counts *validations*, not epochs, so it stays meaningful either way.
+    val_every: int = 1
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     data_root: str | None = None
     out_dir: str = "runs_md17"
@@ -192,6 +198,12 @@ def train_forces(cfg: ForceTrainConfig) -> dict:
             seen += target_e.numel()
 
         train_force_mae = std.decode_force_error(running_f / max(seen, 1))
+
+        # Always validate on the final epoch so the best checkpoint is never missed
+        # simply because the run ended between validations.
+        is_last = epoch == cfg.epochs - 1
+        if not (is_last or epoch % cfg.val_every == 0):
+            continue
 
         backup = ema.copy_to(model) if ema is not None else None
         metrics = evaluate_forces(model, val_loader, datamodule, device)
