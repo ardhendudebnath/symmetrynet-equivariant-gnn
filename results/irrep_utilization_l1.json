@@ -1,0 +1,24 @@
+{
+  "run": "tfn_l1_f1_e50_s0",
+  "l_max": 1,
+  "test_mae_meV": 89.55042491812257,
+  "note": "per-component values; ablation was tried and discarded as uninformative",
+  "per_degree": [
+    {
+      "degree": 0,
+      "rms_per_component": 0.9924259352916242,
+      "grad_per_component": 0.005361132606274064,
+      "components": 1,
+      "rms_relative_to_l0": 1.0,
+      "grad_relative_to_l0": 1.0
+    },
+    {
+      "degree": 1,
+      "rms_per_component": 1.0043194068436727,
+      "grad_per_component": 0.0022235643609796506,
+      "components": 3,
+      "rms_relative_to_l0": 1.0119842409686257,
+      "grad_relative_to_l0": 0.41475645619685697
+    }
+  ]
+}

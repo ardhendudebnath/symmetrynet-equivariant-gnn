@@ -109,7 +109,44 @@ something, and the effect is isolated from every other architectural variable.
 The caveat is important and easy to miss: this holds *within* the TFN family. PaiNN caps
 out at `l<=1` and still beats TFN at `l_max=2` by 27%, so the ablation must not be read as
 "higher `l_max` is better, full stop". It says angular information helps once you have
-already committed to this architecture. Note the
+already committed to this architecture.
+
+### Why higher ℓ helps yet loses: measuring what each degree contributes
+
+Those two facts together are confusing — is the TFN's ℓ=2 channel doing real work, or is
+it along for the ride while the extra parameters do the lifting? Accuracy alone cannot
+separate those, so
+[`scripts/irrep_utilization.py`](scripts/irrep_utilization.py) measures the channels
+directly on a trained model:
+
+| degree | components | RMS per component | **∂ŷ/∂h per component** |
+|---|---|---|---|
+| ℓ=0 | 1 | 1.009 (1.00×) | 3.34e-03 (**1.00×**) |
+| ℓ=1 | 3 | 1.021 (1.01×) | 1.24e-03 (**0.37×**) |
+| ℓ=2 | 5 | 1.035 (1.03×) | 9.08e-04 (**0.27×**) |
+
+Feature *magnitudes* are essentially equal per component — BatchNorm sees to that, so no
+degree is amplified or starved. But the prediction is **3.7× less sensitive to an ℓ=2
+component than to a scalar**. The paths that require Clebsch-Gordan tensor products, and
+cost 5× the compute, carry proportionally less influence over the output.
+
+That reconciles the two results. ℓ=2 is genuinely used — removing it costs 12% accuracy —
+but each of its components earns less per unit of compute than a scalar does. PaiNN spends
+the same budget on ℓ≤1 with more width and depth, and comes out ahead. Cross-checked on
+the independently trained `l_max=1` model, where ℓ=1 measures 0.41× against 0.37× here.
+
+<details>
+<summary>Two probes that did not work, and why</summary>
+
+**Zero a degree and measure the damage.** Uninformative: removing *any* degree degrades
+test MAE by ~1800%, including ℓ=0. Deleting a whole channel takes a deep network so far
+off its training distribution that everything collapses equally.
+
+**Share of total feature magnitude.** Measured 13.8 / 31.8 / 54.4% for ℓ=0,1,2 — but those
+are almost exactly the *dimension* shares (11.1 / 33.3 / 55.6%, since a degree-ℓ channel
+holds 2ℓ+1 components). It was reporting how many slots each degree owns, not how hard it
+works. Hence per-component normalisation throughout above.
+</details> Note the
 baseline line already sits below all three bars — which is the next result.
 
 ### The headline: equivariance wins, but only with the right architecture

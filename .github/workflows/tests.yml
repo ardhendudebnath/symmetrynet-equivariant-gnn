@@ -1,0 +1,59 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A new push supersedes an in-flight run on the same ref.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies (CPU only)
+        # The CPU wheel is a fraction of the CUDA build's size and the suite needs no GPU:
+        # every symmetry test runs in float64 on synthetic molecules, and float64 is
+        # slower on consumer GPUs anyway. The one CUDA-dependent test skips itself.
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check src tests scripts
+
+      - name: Run tests
+        # No dataset download: every test builds its own molecules, so CI needs neither
+        # QM9 (~400 MB) nor MD17 (~220 MB).
+        run: pytest -q
+
+  verify-equivariance:
+    # Split out so the headline claim has its own visible pass/fail rather than being
+    # buried in a 243-test summary. This is the property the whole project exists to
+    # provide; if it ever breaks, that should be legible at a glance.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies (CPU only)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+      - name: Rotation, translation, inversion and permutation invariance
+        run: pytest tests/test_model_equivariance.py tests/test_forces.py -q
