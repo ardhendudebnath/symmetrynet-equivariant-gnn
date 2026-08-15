@@ -341,6 +341,40 @@ actually wins here, only reaching parity at N=2000, and our PaiNN sits at 0.3125
 published ~0.23 at N=1000, so the model is not at full strength and the level of the curve
 probably understates it. One seed. Correlated frames. Suggestive, not conclusive.
 
+### What each irrep actually contributes
+
+The ablation and the PaiNN result left a genuine puzzle. Inside the TFN family, ℓ=2 beats
+ℓ=1 by 12%, which says higher angular resolution helps. Yet PaiNN, structurally incapable
+of representing anything above ℓ=1, beats TFN-at-ℓ=2 by 27%. Both are measured. Accuracy
+alone cannot say whether the ℓ=2 channel is doing real work or riding along while the extra
+parameters do the lifting, so I measured the channels directly.
+
+| degree | components | RMS per component | ∂ŷ/∂h per component |
+|---|---|---|---|
+| ℓ=0 | 1 | 1.009 (1.00×) | 3.34e-03 (1.00×) |
+| ℓ=1 | 3 | 1.021 (1.01×) | 1.24e-03 (0.37×) |
+| ℓ=2 | 5 | 1.035 (1.03×) | 9.08e-04 (0.27×) |
+
+Magnitudes are equal per component — BatchNorm guarantees that — so no degree is amplified
+or starved. The difference is influence: the prediction is 3.7× less sensitive to an ℓ=2
+component than to a scalar. The paths that require Clebsch-Gordan tensor products, and cost
+5× the compute, exert proportionally less effect on the output. ℓ=1 measures 0.41× on the
+separately trained ℓ_max=1 model against 0.37× here, so the pattern is not an artifact of
+one run.
+
+That reconciles the two results. ℓ=2 is genuinely used — deleting it costs 12% accuracy —
+but each component earns less per unit of compute than a scalar does, and PaiNN spends the
+same budget on ℓ≤1 with more width and depth.
+
+Getting there took discarding two probes. Zeroing a degree and measuring the damage is
+uninformative: removing *any* degree, ℓ=0 included, degrades test MAE by ~1800%, because
+deleting a whole channel takes a deep network so far off-distribution that everything
+collapses equally. And the share of total feature magnitude per degree came out at 13.8 /
+31.8 / 54.4%, which is almost exactly the *dimension* split (11.1 / 33.3 / 55.6%) — it was
+measuring how many slots each degree owns, not how hard it works. Both failures share a
+shape: a number that looks like a measurement of importance while actually measuring
+something structural.
+
 ### Three convergence heuristics, all wrong
 
 The force arm cost more than the result was worth, and the reason is worth recording

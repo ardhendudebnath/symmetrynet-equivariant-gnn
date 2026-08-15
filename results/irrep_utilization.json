@@ -1,0 +1,32 @@
+{
+  "run": "tfn_l2_f1_e200_s0",
+  "l_max": 2,
+  "test_mae_meV": 59.43407597786523,
+  "note": "per-component values; ablation was tried and discarded as uninformative",
+  "per_degree": [
+    {
+      "degree": 0,
+      "rms_per_component": 1.0091631318534793,
+      "grad_per_component": 0.003343343102417549,
+      "components": 1,
+      "rms_relative_to_l0": 1.0,
+      "grad_relative_to_l0": 1.0
+    },
+    {
+      "degree": 1,
+      "rms_per_component": 1.0205240410471235,
+      "grad_per_component": 0.0012395374791238853,
+      "components": 3,
+      "rms_relative_to_l0": 1.011257752919271,
+      "grad_relative_to_l0": 0.3707479134365791
+    },
+    {
+      "degree": 2,
+      "rms_per_component": 1.0346067488988426,
+      "grad_per_component": 0.0009076284063781008,
+      "components": 5,
+      "rms_relative_to_l0": 1.0252125907519356,
+      "grad_relative_to_l0": 0.2714733063806107
+    }
+  ]
+}
