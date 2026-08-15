@@ -1,106 +1,95 @@
-[
-  {
-    "run_name": "baseline_ethanol_n250_e12500_s0",
-    "model": "baseline",
-    "molecule": "ethanol",
-    "train_size": 250,
-    "seed": 0,
-    "epochs": 12500,
-    "best_epoch": 1094,
-    "num_params": 277257,
-    "test_force_mae": 0.5795329618610641,
-    "test_energy_mae": 0.12809180517103214,
-    "minutes": 25.171370418866477
-  },
-  {
-    "run_name": "painn_ethanol_n250_e12500_s0",
-    "model": "painn",
-    "molecule": "ethanol",
-    "train_size": 250,
-    "seed": 0,
-    "epochs": 12500,
-    "best_epoch": 2714,
-    "num_params": 575765,
-    "test_force_mae": 0.9284475263698408,
-    "test_energy_mae": 0.21476351157578372,
-    "minutes": 49.695556513468425
-  },
-  {
-    "run_name": "baseline_ethanol_n500_e6250_s0",
-    "model": "baseline",
-    "molecule": "ethanol",
-    "train_size": 500,
-    "seed": 0,
-    "epochs": 6250,
-    "best_epoch": 848,
-    "num_params": 277257,
-    "test_force_mae": 0.41760651040347085,
-    "test_energy_mae": 0.09319282607297899,
-    "minutes": 22.74442265033722
-  },
-  {
-    "run_name": "painn_ethanol_n500_e6250_s0",
-    "model": "painn",
-    "molecule": "ethanol",
-    "train_size": 500,
-    "seed": 0,
-    "epochs": 6250,
-    "best_epoch": 4377,
-    "num_params": 575765,
-    "test_force_mae": 0.5332786870104043,
-    "test_energy_mae": 0.11730666313654876,
-    "minutes": 93.0518255909284
-  },
-  {
-    "run_name": "baseline_ethanol_n1000_e3174_s0",
-    "model": "baseline",
-    "molecule": "ethanol",
-    "train_size": 1000,
-    "seed": 0,
-    "epochs": 3174,
-    "best_epoch": 600,
-    "num_params": 277257,
-    "test_force_mae": 0.30467771216665746,
-    "test_energy_mae": 0.08242155273935145,
-    "minutes": 22.743920954068503
-  },
-  {
-    "run_name": "painn_ethanol_n1000_e3174_s0",
-    "model": "painn",
-    "molecule": "ethanol",
-    "train_size": 1000,
-    "seed": 0,
-    "epochs": 3174,
-    "best_epoch": 2996,
-    "num_params": 575765,
-    "test_force_mae": 0.31245143184596663,
-    "test_energy_mae": 0.0711131259147962,
-    "minutes": 88.9661395351092
-  },
-  {
-    "run_name": "baseline_ethanol_n2000_e1600_s0",
-    "model": "baseline",
-    "molecule": "ethanol",
-    "train_size": 2000,
-    "seed": 0,
-    "epochs": 1600,
-    "best_epoch": 1599,
-    "num_params": 277257,
-    "test_force_mae": 0.17534510059620953,
-    "test_energy_mae": 0.061376059173760676,
-    "minutes": 59.5934265812238
-  },
-  {
-    "run_name": "painn_ethanol_n2000_e1600_s0",
-    "model": "painn",
-    "molecule": "ethanol",
-    "train_size": 2000,
-    "seed": 0,
-    "epochs": 1600,
-    "best_epoch": 1594,
-    "num_params": 575765,
-    "test_force_mae": 0.17552915495454735,
-    "test_energy_mae": 0.05538061960768673,
-    "minutes": 79.8797359585762
-  }
-]
+{
+  "molecule": "ethanol",
+  "seed": 0,
+  "budget_selected_on": "validation",
+  "points": [
+    {
+      "train_size": 250,
+      "baseline": {
+        "run_name": "baseline_ethanol_n250_s0",
+        "steps": 25600,
+        "val_force_mae": 0.5302866929553902,
+        "test_force_mae": 0.5378260747419364,
+        "test_energy_mae": 0.108642334725684,
+        "best_epoch": 1599,
+        "epochs": 1600
+      },
+      "painn": {
+        "run_name": "painn_ethanol_n250_e12500_s0",
+        "steps": 200000,
+        "val_force_mae": 0.9085765782087702,
+        "test_force_mae": 0.9284475263698408,
+        "test_energy_mae": 0.21476351157578372,
+        "best_epoch": 2714,
+        "epochs": 12500
+      },
+      "ratio": 0.5792746056902057
+    },
+    {
+      "train_size": 500,
+      "baseline": {
+        "run_name": "baseline_ethanol_n500_s0",
+        "steps": 25600,
+        "val_force_mae": 0.3711799150237066,
+        "test_force_mae": 0.3846672304877899,
+        "test_energy_mae": 0.08499983874458708,
+        "best_epoch": 799,
+        "epochs": 800
+      },
+      "painn": {
+        "run_name": "painn_ethanol_n500_e6250_s0",
+        "steps": 200000,
+        "val_force_mae": 0.5193724866246451,
+        "test_force_mae": 0.5332786870104043,
+        "test_energy_mae": 0.11730666313654876,
+        "best_epoch": 4377,
+        "epochs": 6250
+      },
+      "ratio": 0.7213249654589797
+    },
+    {
+      "train_size": 1000,
+      "baseline": {
+        "run_name": "baseline_ethanol_n1000_e3174_s0",
+        "steps": 199962,
+        "val_force_mae": 0.2938215441542176,
+        "test_force_mae": 0.30467771216665746,
+        "test_energy_mae": 0.08242155273935145,
+        "best_epoch": 600,
+        "epochs": 3174
+      },
+      "painn": {
+        "run_name": "painn_ethanol_n1000_e3174_s0",
+        "steps": 199962,
+        "val_force_mae": 0.30304161771175603,
+        "test_force_mae": 0.31245143184596663,
+        "test_energy_mae": 0.0711131259147962,
+        "best_epoch": 2996,
+        "epochs": 3174
+      },
+      "ratio": 0.9751202302598456
+    },
+    {
+      "train_size": 2000,
+      "baseline": {
+        "run_name": "baseline_ethanol_n2000_e1600_s0",
+        "steps": 200000,
+        "val_force_mae": 0.1701099838301436,
+        "test_force_mae": 0.17534510059620953,
+        "test_energy_mae": 0.061376059173760676,
+        "best_epoch": 1599,
+        "epochs": 1600
+      },
+      "painn": {
+        "run_name": "painn_ethanol_n2000_e1600_s0",
+        "steps": 200000,
+        "val_force_mae": 0.16959362732690836,
+        "test_force_mae": 0.17552915495454735,
+        "test_energy_mae": 0.05538061960768673,
+        "best_epoch": 1594,
+        "epochs": 1600
+      },
+      "ratio": 0.9989514314110071
+    }
+  ]
+}
