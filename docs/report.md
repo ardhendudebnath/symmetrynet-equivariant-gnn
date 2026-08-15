@@ -320,6 +320,65 @@ model to recover angular structure from data once it had enough. The scaling fit
 opposite: the baseline's disadvantage *grows* with data. That guess was wrong, and the
 measurement was what settled it.
 
+**And forces did not rescue the data-efficiency claim either.** The strongest objection to
+everything above is that it measures a scalar target, while the usual claim was made for
+tensorial ones — NequIP's headline result is about forces. So I built the force arm: MD17
+ethanol, energies and forces, forces obtained as −∂E/∂x so both models produce genuinely
+equivariant force fields and the comparison is between an internally tensorial architecture
+and a distance-only one.
+
+| training configurations | baseline | PaiNN | ratio |
+|---|---|---|---|
+| 250 | 0.5378 | 0.9284 | 0.58 |
+| 500 | 0.3847 | 0.5333 | 0.72 |
+| 1000 | 0.3047 | 0.3125 | 0.98 |
+| 2000 | 0.1753 | 0.1755 | 1.00 |
+
+Same direction. The advantage grows with data on a tensorial target too, in the small-data
+regime where the claim originated. That makes the finding broader than QM9 alone — but the
+force experiment is the weaker of the two and I would not lead with it. PaiNN never
+actually wins here, only reaching parity at N=2000, and our PaiNN sits at 0.3125 against a
+published ~0.23 at N=1000, so the model is not at full strength and the level of the curve
+probably understates it. One seed. Correlated frames. Suggestive, not conclusive.
+
+### Three convergence heuristics, all wrong
+
+The force arm cost more than the result was worth, and the reason is worth recording
+because it generalises.
+
+I wrote a convergence check so that under-trained runs could not be reported as results. It
+failed three times, each in a different way:
+
+*Best epoch near the end of the schedule.* False-positives on flat curves — once validation
+plateaus, the argmin lands anywhere in it by noise. A converged run was flagged at 94% of
+its schedule having improved 0.05% over its final tenth.
+
+*Validation still falling over the last 10%.* Fixed that case, then passed a genuinely
+under-trained run at 0.39%. A short cosine schedule anneals the learning rate to zero, so
+the curve flattens whether or not the model has reached its potential. The run it cleared
+was later beaten by 20% at eight times the budget.
+
+*The same test applied to longer runs.* Reported 35% "still improving" for a run whose
+validation error was **rising**. On an overfitted curve the minimum occurs early, so
+comparing the 90% mark against the minimum measures overfitting and calls it progress.
+
+The third failure was the useful one, because it showed there was nothing to detect. At
+N=250 the baseline reaches its best validation score at ~25k steps and then degrades
+steadily; by 600k its validation error has risen from 0.57 to 0.83. No single budget is
+correct for every model and every dataset size, so "did it converge" is the wrong question.
+
+The right one is the ordinary one: treat the budget as a hyperparameter, train at several,
+select per configuration on **validation**, and report test separately. Selecting on
+validation rather than test is the part that keeps it honest — choosing the budget with the
+best test score would be tuning on the test set, and would have been easy to do accidentally
+while "fixing convergence".
+
+Both of my errors on this dataset were biased, and in opposite directions: the first
+under-trained PaiNN, which is the slower converger, making it look worse; the second
+under-trained the baseline, making PaiNN look better. Neither was caught by noticing an
+implausible number — the first was caught by a check, the second by that check firing on
+runs I had assumed were fine.
+
 Getting to a curve I trust took two corrections worth recording. The first version used a
 fixed epoch budget per fraction, which converges the small-data points while starving the
 large-data ones, because a 10% split has a fifth as many gradient steps per epoch. The

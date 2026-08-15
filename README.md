@@ -240,6 +240,50 @@ hypothesis it replaces.
 Reproduce with [`scripts/fit_scaling.py`](scripts/fit_scaling.py); fitted values in
 [`results/scaling.json`](results/scaling.json).
 
+### Testing the obvious objection: forces (MD17)
+
+Everything above measures a *scalar* target. The natural objection is that the usual
+data-efficiency claim was made for **tensorial** ones — NequIP's headline result is about
+forces, which are ℓ=1 — so the finding might be a scalar-target artifact. If forces
+reversed the trend, the contradiction would become a boundary condition rather than a
+general failure, which would be a more useful result.
+
+MD17 ethanol, forces (kcal/mol/Å), in the small-data regime where the claim originated:
+
+| training configurations | baseline | PaiNN | ratio |
+|---|---|---|---|
+| 250 | **0.5378** | 0.9284 | 0.58 |
+| 500 | **0.3847** | 0.5333 | 0.72 |
+| 1000 | **0.3047** | 0.3125 | 0.98 |
+| 2000 | 0.1753 | 0.1755 | 1.00 |
+
+**Same direction as the scalar target.** The advantage grows with data here too (0.58 →
+1.00), so switching to a tensorial target does not rescue the data-efficiency claim. On
+this evidence it fails on both target types, which is a stronger statement than the QM9
+result alone — but note it is also a *weaker experiment*, for reasons worth being explicit
+about:
+
+- **PaiNN never actually wins here.** It only reaches parity at N=2000, whereas on QM9 it
+  beat the baseline everywhere. Forces are supposed to be its strong suit.
+- **Our PaiNN is below its published capability** — 0.3125 at N=1000 against a published
+  ~0.23. So the *level* of this curve is suspect and probably understates PaiNN. The
+  *trend* is the more robust part, but it rests on a model that is not at full strength.
+- **Seed 0 only.** After the QM9 experience, one seed is not treated as established.
+- **MD17 frames are consecutive MD snapshots**, so a random split leaks between train and
+  test. That is the standard protocol every published number shares, so absolute values are
+  optimistic across the board and only the relative comparison is meaningful.
+
+The honest summary: this is consistent with the QM9 finding and does not support the
+scalar-vs-tensorial boundary, but it is suggestive rather than conclusive.
+
+**Budgets are chosen per configuration on validation, not fixed.** No single training
+budget suits every model and dataset size here — at N=250 the baseline reaches its best
+validation score around 25k steps and then *degrades*, its validation error rising from
+0.57 to 0.83 by 600k. Treating the budget as a hyperparameter selected on validation, with
+test reported separately, is what makes the comparison fair. See
+[`scripts/consolidate_forces.py`](scripts/consolidate_forces.py) for why three different
+convergence heuristics were tried and discarded first.
+
 **This also falsifies my own earlier explanation.** When only the TFN had been tested, I
 attributed its backwards trend to optimisation difficulty — the tensor-product model needed
 roughly four times the baseline's schedule to converge, and I argued that cost outweighed
