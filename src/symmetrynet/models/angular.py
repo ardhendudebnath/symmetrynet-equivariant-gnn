@@ -97,7 +97,12 @@ def build_triplets(edge_index: Tensor, num_nodes: int) -> tuple[Tensor, Tensor]:
     # Group edges by destination so each atom's incoming edges are contiguous.
     order = torch.argsort(dst)
     dst_sorted = dst[order]
-    counts = torch.bincount(dst_sorted, minlength=num_nodes)
+    # scatter_add rather than torch.bincount: bincount's CUDA path uses atomics and threw
+    # a transient `cudaErrorUnknown` here after ~90 minutes of otherwise healthy training.
+    # This formulation is equivalent, and is the same primitive the message passing has
+    # used reliably throughout the project.
+    counts = torch.zeros(num_nodes, dtype=torch.long, device=device)
+    counts.scatter_add_(0, dst_sorted, torch.ones_like(dst_sorted))
     starts = torch.cat([counts.new_zeros(1), counts.cumsum(0)[:-1]])
 
     # Each edge pairs with every edge sharing its destination.
