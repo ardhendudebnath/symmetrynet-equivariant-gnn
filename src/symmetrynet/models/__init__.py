@@ -14,6 +14,7 @@
 """
 
 from ..scratch.layer import ScratchTFN
+from .angular import AngularInvariantGNN
 from .baseline import InvariantGNN
 from .forces import ForceModel
 from .naive import NaiveCoordinateGNN, NaiveCoordinateMLP
@@ -22,6 +23,7 @@ from .tfn import TensorFieldNetwork, hidden_irreps
 
 MODEL_REGISTRY = {
     "baseline": InvariantGNN,
+    "angular": AngularInvariantGNN,
     "tfn": TensorFieldNetwork,
     "painn": PaiNN,
     "naive": NaiveCoordinateGNN,
@@ -31,6 +33,7 @@ MODEL_REGISTRY = {
 
 __all__ = [
     "InvariantGNN",
+    "AngularInvariantGNN",
     "TensorFieldNetwork",
     "PaiNN",
     "NaiveCoordinateGNN",
