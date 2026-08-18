@@ -46,6 +46,14 @@ class TrainConfig:
     multiplicity: int = 64
     hidden: int = 128
     num_radial: int = 8
+    # AngularInvariantGNN only. Kept modest because the triplet tensor is the memory
+    # bottleneck of the whole project: ~414k triplets per batch of 96 molecules, each
+    # carrying autograd intermediates through four angular blocks.
+    angular_hidden: int = 16
+    # Legendre degree. 2 matches the TFN's l_max=2: by the addition theorem, P_l up to
+    # l=2 is exactly the invariant content of spherical harmonics up to l=2, so the two
+    # models receive comparable angular information.
+    max_degree: int = 2
     train_fraction: float = 1.0
     seed: int = 0
     num_workers: int = 0
@@ -117,6 +125,8 @@ def build_model(cfg: TrainConfig, avg_num_neighbors: float) -> nn.Module:
         "hidden": cfg.hidden,
         "hidden_multiplicity": cfg.multiplicity,
         "batch_norm": cfg.batch_norm,
+        "angular_hidden": cfg.angular_hidden,
+        "max_degree": cfg.max_degree,
     }
     import inspect
 
