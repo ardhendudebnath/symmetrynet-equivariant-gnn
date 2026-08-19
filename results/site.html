@@ -1,0 +1,783 @@
+<title>SymmetryNet</title>
+
+<style>
+  :root {
+    /* Palette taken from the spherical-harmonic phase convention -- the blue/red used to
+       draw positive and negative lobes -- so the page, the plots and the subject share
+       one visual language instead of three. */
+    --ink:        #12141c;
+    --ink-2:      #1b1f2a;
+    --ink-3:      #262b38;
+    --paper:      #eceff4;
+    --paper-2:    #f6f8fa;
+    --phase-neg:  #2e6fa7;
+    --phase-pos:  #c94f4f;
+    --locked:     #3a9188;
+    --gold:       #c98f2e;
+
+    --bg:      var(--paper);
+    --surface: var(--paper-2);
+    --well:    #10131b;
+    --text:    #171a22;
+    --dim:     #5b6475;
+    --faint:   #8d95a5;
+    --rule:    #d2d8e0;
+
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+    --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+
+    --measure: 34rem;
+    --gap: clamp(3rem, 7vw, 6rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: var(--ink); --surface: var(--ink-2); --well: #0b0e15;
+      --text: #e6eaf1; --dim: #a3abbb; --faint: #6f788a; --rule: #2e3442;
+      --phase-neg: #5b9dd4; --phase-pos: #e07373; --locked: #52b3a8; --gold: #ddab52;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: var(--ink); --surface: var(--ink-2); --well: #0b0e15;
+    --text: #e6eaf1; --dim: #a3abbb; --faint: #6f788a; --rule: #2e3442;
+    --phase-neg: #5b9dd4; --phase-pos: #e07373; --locked: #52b3a8; --gold: #ddab52;
+  }
+  :root[data-theme="light"] {
+    --bg: var(--paper); --surface: var(--paper-2); --well: #10131b;
+    --text: #171a22; --dim: #5b6475; --faint: #8d95a5; --rule: #d2d8e0;
+    --phase-neg: #2e6fa7; --phase-pos: #c94f4f; --locked: #3a9188; --gold: #c98f2e;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: 1.02rem;
+    line-height: 1.68;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 78rem; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
+  .col  { max-width: var(--measure); }
+
+  /* ------------------------------------------------------------------ type */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin: 0 0 0.9rem;
+  }
+  h1 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(1.9rem, 5.2vw, 3.4rem);
+    line-height: 1.06;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h2 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(1.25rem, 2.6vw, 1.7rem);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+  }
+  h3 {
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--dim);
+    font-weight: 600;
+    margin: 0 0 0.6rem;
+  }
+  p { margin: 0 0 1.1rem; }
+  a { color: inherit; text-decoration-color: var(--faint); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--locked); }
+  strong { font-weight: 600; }
+  code, .num {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+  code { font-size: 0.9em; }
+
+  /* --------------------------------------------------------------- sections */
+  section { padding: var(--gap) 0; border-top: 1px solid var(--rule); }
+  section:first-of-type { border-top: 0; }
+
+  /* Section markers are angular ticks, not numbers: rotation is what the whole
+     project is about, so the page counts in degrees. */
+  .tick {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    color: var(--faint);
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.6rem;
+  }
+  .tick::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--rule), transparent);
+  }
+
+  /* ------------------------------------------------------------------ hero */
+  .hero { padding-top: clamp(2.5rem, 6vw, 4.5rem); }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    align-items: center;
+  }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+
+  .lede {
+    font-size: clamp(1.05rem, 1.9vw, 1.22rem);
+    color: var(--dim);
+    max-width: 32rem;
+    margin-top: 1.4rem;
+  }
+
+  .stage {
+    position: relative;
+    background: var(--well);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+  }
+  .stage:active { cursor: grabbing; }
+  .stage canvas { display: block; width: 100%; height: 100%; }
+  .stage-tag {
+    position: absolute; top: 0.8rem; left: 0.9rem;
+    font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #7b869c; pointer-events: none;
+  }
+  .stage-hint {
+    position: absolute; bottom: 0.8rem; left: 0.9rem; right: 0.9rem;
+    display: flex; justify-content: space-between; gap: 1rem;
+    font-family: var(--mono); font-size: 0.64rem; color: #6b7588;
+    pointer-events: none;
+  }
+
+  .readouts { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+  .readout {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.55rem 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--chan, var(--faint));
+    border-radius: 2px;
+  }
+  .readout-name {
+    font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text);
+  }
+  .readout-val {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 0.95rem; font-weight: 600; color: var(--chan, var(--text));
+  }
+
+  /* ------------------------------------------------------------------ data */
+  .bar-rows { display: flex; flex-direction: column; gap: 0.9rem; margin: 1.8rem 0; }
+  .bar-row { display: grid; grid-template-columns: 13rem 1fr; gap: 1rem; align-items: center; }
+  @media (max-width: 640px) { .bar-row { grid-template-columns: 1fr; gap: 0.3rem; } }
+  .bar-label { font-family: var(--mono); font-size: 0.74rem; line-height: 1.35; }
+  .bar-label small { display: block; color: var(--faint); font-size: 0.66rem; letter-spacing: 0.08em; }
+  .bar-track { display: flex; align-items: center; gap: 0.7rem; }
+  .bar-fill { height: 1.35rem; border-radius: 1px; background: var(--chan, var(--faint)); }
+  .bar-num {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 0.85rem; font-weight: 600; white-space: nowrap;
+  }
+
+  .decomp {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    margin: 1.8rem 0;
+  }
+  .decomp > div { background: var(--bg); padding: 1.1rem 1.2rem; }
+  .decomp .big {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: 1.75rem; font-weight: 600; line-height: 1; display: block;
+  }
+  .decomp .cap { font-size: 0.82rem; color: var(--dim); display: block; margin-top: 0.45rem; }
+
+  table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
+  th, td { padding: 0.5rem 0.7rem; text-align: right; border-bottom: 1px solid var(--rule); }
+  th:first-child, td:first-child { text-align: left; }
+  th {
+    font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--faint); font-weight: 600;
+  }
+  td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  td:first-child { font-family: var(--serif); }
+  .scroll { overflow-x: auto; }
+
+  .note {
+    border-left: 2px solid var(--rule);
+    padding-left: 1.1rem;
+    color: var(--dim);
+    font-size: 0.94rem;
+  }
+
+  .flags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1.2rem 0 0; }
+  .flag {
+    font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em;
+    padding: 0.28rem 0.6rem; border: 1px solid var(--rule); border-radius: 100px;
+    color: var(--dim);
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1.4rem; }
+  .card { border-top: 2px solid var(--chan, var(--rule)); padding-top: 0.9rem; }
+  .card p { font-size: 0.93rem; margin-bottom: 0.7rem; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 2.5rem 0 4rem;
+    color: var(--dim);
+    font-size: 0.9rem;
+  }
+  .cta {
+    display: inline-block; margin-top: 0.5rem;
+    font-family: var(--mono); font-size: 0.76rem; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 0.7rem 1.3rem;
+    border: 1px solid var(--rule); border-radius: 2px; text-decoration: none;
+  }
+  .cta:hover { border-color: var(--locked); color: var(--locked); }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <!-- =================================================== hero / 0&deg; -->
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <p class="eyebrow">E(3)-equivariant graph neural networks &middot; QM9 &middot; MD17</p>
+        <h1>A prediction that<br>refuses to move.</h1>
+        <p class="lede">
+          A molecule&rsquo;s properties cannot depend on how you happened to orient it when
+          you wrote down the coordinates. Most networks learn that approximately, from
+          augmented data. These are built so they <em>cannot</em> represent a function that
+          violates it &mdash; and the representation theory behind that is implemented here
+          from first principles, not imported.
+        </p>
+        <div class="flags" id="flags"></div>
+      </div>
+
+      <div>
+        <div class="stage" id="stage">
+          <span class="stage-tag" id="formula">&mdash;</span>
+          <canvas id="mol"></canvas>
+          <div class="stage-hint">
+            <span>drag to rotate</span><span id="orient">az 0&deg; &middot; el 0&deg;</span>
+          </div>
+        </div>
+        <div class="readouts" id="readouts"></div>
+        <p class="eyebrow" style="margin:0.9rem 0 0;text-transform:none;letter-spacing:0.02em;font-family:var(--serif);font-size:0.84rem;color:var(--faint)">
+          Drift from the starting orientation. These networks are <em>untrained</em> &mdash;
+          equivariance is a property of the architecture, not of the data.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================= finding 1 / 72&deg; -->
+  <section>
+    <p class="tick">072&deg; &nbsp;/&nbsp; the headline</p>
+    <div class="col">
+      <h2>Equivariance wins &mdash; and it is not just angle-awareness.</h2>
+      <p>
+        Four models, one training loop, identical data and schedule. The third row is a
+        control added late: <strong>invariant, but angle-aware</strong>. Without it,
+        equivariance and angular information are confounded, because every equivariant
+        model here also sees angles.
+      </p>
+    </div>
+    <div class="bar-rows" id="comparison"></div>
+    <div class="col">
+      <p>With that control in place, the advantage decomposes:</p>
+    </div>
+    <div class="decomp" id="decomp"></div>
+    <div class="col">
+      <p class="note">
+        Angular information accounts for under a third of the gap. Equivariance contributes
+        roughly two and a half times more, so it is not merely an expensive route to
+        angles &mdash; the alternative explanation that could not previously be ruled out.
+        Both models see the same angles; what differs is whether that information survives
+        the next layer.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================================= finding 2 / 144&deg; -->
+  <section>
+    <p class="tick">144&deg; &nbsp;/&nbsp; scaling, not sample efficiency</p>
+    <div class="col">
+      <h2>The benefit compounds with data rather than shrinking.</h2>
+      <p>
+        The usual claim is that built-in symmetry buys <em>sample efficiency</em>: fewer
+        examples for a given error, so the advantage should be largest when data is scarce.
+        Measured across three seeds, the advantage moves the other way &mdash; and fitting
+        the error curves says why.
+      </p>
+    </div>
+    <div class="scroll"><table id="multiseed"></table></div>
+    <div class="col">
+      <p>
+        Error follows a power law tightly here, <code>MAE &prop; N^-b</code>, with
+        <span class="num" id="r2min">&mdash;</span> on every fit. So the exponent is a real
+        quantity, and the ratio of two power laws can only grow with <code>N</code> if the
+        equivariant exponent is steeper. It is:
+      </p>
+    </div>
+    <div class="decomp" id="scaling"></div>
+    <div class="col">
+      <p class="note">
+        An offset advantage is a fixed discount; an exponent advantage compounds with every
+        molecule added. So the honest statement is not that equivariance failed to deliver
+        data efficiency, but that <strong>it improves scaling rather than sample
+        efficiency</strong> &mdash; a different mechanism with the opposite signature.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================================= finding 3 / 216&deg; -->
+  <section>
+    <p class="tick">216&deg; &nbsp;/&nbsp; what each degree is worth</p>
+    <div class="hero-grid">
+      <div>
+        <h2>Higher angular resolution helps, then stops paying.</h2>
+        <p>
+          Inside one architecture, raising <code>l_max</code> monotonically improves
+          accuracy. Yet PaiNN, which cannot represent anything above <code>l=1</code>, beats
+          the tensor-product model at <code>l_max=2</code>. Measuring the channels directly
+          resolves it: feature magnitudes are equal per component, but influence is not.
+        </p>
+        <div class="scroll"><table id="irrep"></table></div>
+        <p class="note" style="font-size:0.9rem">
+          The prediction is far less sensitive to an <code>l=2</code> component than to a
+          scalar, while the Clebsch&ndash;Gordan paths that produce it cost roughly five
+          times the compute.
+        </p>
+      </div>
+      <div>
+        <h3>l_max ablation</h3>
+        <div class="bar-rows" id="ablation"></div>
+        <p class="note" style="font-size:0.88rem">
+          <code>l_max=0</code> is the informative control: a fully equivariant model in
+          which the selection rule permits no angular path at all.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================= method / 288&deg; -->
+  <section>
+    <p class="tick">288&deg; &nbsp;/&nbsp; how it was built and checked</p>
+    <div class="col">
+      <h2>Derived by hand, verified against itself, and wrong several times.</h2>
+      <p>
+        The representation theory is implemented from first principles rather than
+        imported, the symmetry claims are measured rather than asserted, and the mistakes
+        along the way are kept in the write-up because they were the most instructive part.
+      </p>
+    </div>
+    <div class="cards" style="margin-top:2rem">
+      <div class="card" style="--chan:var(--locked)">
+        <h3>Derived, not imported</h3>
+        <p>
+          Real spherical harmonics in closed form, Clebsch&ndash;Gordan coefficients from
+          the Racah formula transformed into the real basis, and Wigner-D matrices built
+          recursively from those coefficients &mdash; deliberately without touching the
+          harmonics they are then used to verify, so the agreement is a genuine
+          cross-check rather than a tautology.
+        </p>
+        <p><span class="num" style="color:var(--locked)">1e-16</span> agreement with e3nn, in float64.</p>
+      </div>
+      <div class="card" style="--chan:var(--phase-neg)">
+        <h3>Verified, not asserted</h3>
+        <p>
+          259 tests. Symmetry checks run in float64 and are compared against the model&rsquo;s
+          own reproducibility floor, because CUDA scatter-add is non-deterministic and a
+          tolerance below that floor measures nothing. Forces get stronger tests still:
+          a field must <em>rotate with</em> the molecule, which zeros would also satisfy.
+        </p>
+      </div>
+      <div class="card" style="--chan:var(--phase-pos)">
+        <h3>Wrong turns, kept in</h3>
+        <p>
+          A model that was exactly equivariant and silently underfitting, because
+          activations compounded fourfold per layer. A tensor product that wanted 7.1&nbsp;GiB
+          for one forward pass. Constants baked at the wrong precision, inflating the
+          residual a millionfold for higher degrees. Three convergence heuristics, each
+          wrong in a different way.
+        </p>
+        <p class="note" style="font-size:0.88rem;border-color:var(--phase-pos)">
+          Proving a network is equivariant proves nothing about whether it is trainable.
+          The failure mode is silent.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================= forces / 360&deg; -->
+  <section>
+    <p class="tick">360&deg; &nbsp;/&nbsp; the obvious objection</p>
+    <div class="col">
+      <h2>Forces do not rescue the sample-efficiency claim either.</h2>
+      <p>
+        Everything above measures a scalar target, while the usual claim was made for
+        tensorial ones. So the same comparison was run on MD17 forces &mdash; vector-valued,
+        in the small-data regime where the claim originated.
+      </p>
+    </div>
+    <div class="scroll"><table id="md17"></table></div>
+    <div class="col">
+      <p class="note">
+        Same direction as the scalar target. But this is the weaker experiment and is
+        labelled as such: the equivariant model never actually wins here, only reaching
+        parity, and it sits below its published capability &mdash; so the level of the curve
+        probably understates it. One seed. Suggestive, not conclusive.
+      </p>
+    </div>
+  </section>
+
+  <footer class="wrap" style="padding-left:0;padding-right:0">
+    <div class="col">
+      <p>
+        Every number on this page is read at build time from the JSON the experiments
+        wrote, so the page cannot drift from the results.
+      </p>
+      <a class="cta" href="https://github.com/ardhendudebnath/symmetrynet-equivariant-gnn">
+        Source, derivations and tests &rarr;
+      </a>
+    </div>
+  </footer>
+</div>
+
+<script id="site-data" type="application/json">{"molecule":{"index":1234,"formula":"C6H10O1","atoms":[{"z":6,"symbol":"C","color":"#4a4a4a","radius":0.72,"pos":[2.10139,2.27456,-0.37126]},{"z":6,"symbol":"C","color":"#4a4a4a","radius":0.72,"pos":[2.03869,0.80076,0.06954]},{"z":6,"symbol":"C","color":"#4a4a4a","radius":0.72,"pos":[0.68449,0.25646,0.06164]},{"z":6,"symbol":"C","color":"#4a4a4a","radius":0.72,"pos":[-0.44681,-0.15934,0.03884]},{"z":6,"symbol":"C","color":"#4a4a4a","radius":0.72,"pos":[-1.80851,-0.70354,0.05974]},{"z":6,"symbol":"C","color":"#4a4a4a","radius":0.72,"pos":[-1.82921,-2.19084,-0.32246]},{"z":8,"symbol":"O","color":"#d64545","radius":0.66,"pos":[-2.44991,-0.48024,1.31554]},{"z":1,"symbol":"H","color":"#e6e6e6","radius":0.32,"pos":[3.13369,2.63626,-0.34756]},{"z":1,"symbol":"H","color":"#e6e6e6","radius":0.32,"pos":[1.71779,2.39196,-1.38836]},{"z":1,"symbol":"H","color":"#e6e6e6","radius":0.32,"pos":[1.49919,2.90316,0.29014]},{"z":1,"symbol":"H","color":"#e6e6e6","radius":0.32,"pos":[2.67789,0.19356,-0.58436]},{"z":1,"symbol":"H","color":"#e6e6e6","radius":0.32,"pos":[2.46219,0.70106,1.07734]},{"z":1,"symbol":"H","color":"#e6e6e6","radius":0.32,"pos":[-2.42441,-0.14984,-0.65956]},{"z":1,"symbol":"H","color":"#e6e6e6","radius":0.32,"pos":[-1.22131,-2.77334,0.37744]},{"z":1,"symbol":"H","color":"#e6e6e6","radius":0.32,"pos":[-2.85721,-2.56144,-0.28906]},{"z":1,"symbol":"H","color":"#e6e6e6","radius":0.32,"pos":[-1.42621,-2.34064,-1.32836]},{"z":1,"symbol":"H","color":"#e6e6e6","radius":0.32,"pos":[-1.85171,-0.79854,2.00074]}],"bonds":[[0,1],[0,7],[0,8],[0,9],[1,2],[1,10],[1,11],[2,3],[3,4],[4,5],[4,6],[4,12],[5,13],[5,14],[5,15],[6,16]]},"grid":{"n_azimuth":36,"n_elevation":19,"azimuth_step":0.17453292519943295,"elevation_start":-1.5707963267948966,"elevation_step":0.17453292519943295},"models":{"equivariant":{"values":[[-1.42109e-14,-2.84217e-14,-2.84217e-14,0.0,-4.26326e-14,-2.84217e-14,2.84217e-14,0.0,-4.26326e-14,-1.42109e-14,-2.84217e-14,-1.42109e-14,-4.26326e-14,0.0,0.0,4.26326e-14,4.26326e-14,2.84217e-14,-1.42109e-14,-1.42109e-14,-2.84217e-14,-2.84217e-14,-4.26326e-14,-1.42109e-14,9.9476e-14,4.26326e-14,-1.42109e-14,2.84217e-14,-2.84217e-14,-4.26326e-14,4.26326e-14,0.0,0.0,-2.84217e-14,0.0,-1.42109e-14],[0.0,-4.26326e-14,-1.42109e-14,-1.42109e-14,1.42109e-14,0.0,-1.42109e-14,2.84217e-14,-1.42109e-14,4.26326e-14,-2.84217e-14,-1.42109e-14,0.0,0.0,0.0,-1.42109e-14,1.42109e-14,1.42109e-14,0.0,-4.26326e-14,-2.84217e-14,-1.42109e-14,1.42109e-14,0.0,1.42109e-14,1.42109e-14,0.0,5.68434e-14,-2.84217e-14,-1.42109e-14,5.68434e-14,1.42109e-14,-1.42109e-14,-2.84217e-14,2.84217e-14,1.42109e-14],[0.0,-2.84217e-14,-1.42109e-14,0.0,-4.26326e-14,1.42109e-14,4.26326e-14,-2.84217e-14,1.42109e-14,-1.42109e-14,-2.84217e-14,-4.26326e-14,-4.26326e-14,-2.84217e-14,1.42109e-14,1.42109e-14,-1.42109e-14,1.42109e-14,0.0,-2.84217e-14,-1.42109e-14,2.84217e-14,-4.26326e-14,0.0,4.26326e-14,2.84217e-14,-2.84217e-14,2.84217e-14,-1.42109e-14,-4.26326e-14,4.26326e-14,0.0,0.0,-1.42109e-14,0.0,0.0],[0.0,-7.10543e-14,-1.42109e-14,-2.84217e-14,-1.42109e-14,1.42109e-14,-7.10543e-14,-2.84217e-14,-4.26326e-14,0.0,-7.10543e-14,-1.42109e-14,-2.84217e-14,-1.42109e-14,-1.42109e-14,1.42109e-14,-1.42109e-14,1.42109e-14,0.0,-1.42109e-14,-2.84217e-14,-1.42109e-14,-1.42109e-14,0.0,0.0,1.42109e-14,-2.84217e-14,-2.84217e-14,0.0,-4.26326e-14,-1.42109e-14,2.84217e-14,-1.42109e-14,-4.26326e-14,0.0,-5.68434e-14],[0.0,0.0,-1.42109e-14,-4.26326e-14,0.0,1.42109e-14,2.84217e-14,0.0,2.84217e-14,-2.84217e-14,-2.84217e-14,-1.42109e-14,-4.26326e-14,1.42109e-14,0.0,1.42109e-14,-1.42109e-14,4.26326e-14,-1.42109e-14,-4.26326e-14,-4.26326e-14,-1.42109e-14,0.0,1.42109e-14,7.10543e-14,2.84217e-14,0.0,-1.42109e-14,-7.10543e-14,0.0,4.26326e-14,-1.42109e-14,-7.10543e-14,-2.84217e-14,0.0,1.42109e-14],[0.0,-5.68434e-14,-2.84217e-14,0.0,-2.84217e-14,0.0,4.26326e-14,1.42109e-14,-2.84217e-14,-1.42109e-14,-5.68434e-14,-4.26326e-14,0.0,0.0,-2.84217e-14,1.42109e-14,-1.42109e-14,4.26326e-14,2.84217e-14,-1.42109e-14,-1.42109e-14,4.26326e-14,-2.84217e-14,-2.84217e-14,7.10543e-14,-1.42109e-14,-1.42109e-14,0.0,-4.26326e-14,0.0,2.84217e-14,2.84217e-14,-5.68434e-14,-1.42109e-14,-2.84217e-14,-1.42109e-14],[0.0,-4.26326e-14,-2.84217e-14,4.26326e-14,-1.42109e-14,0.0,1.42109e-14,-4.26326e-14,-4.26326e-14,2.84217e-14,-4.26326e-14,-2.84217e-14,-4.26326e-14,0.0,0.0,4.26326e-14,-5.68434e-14,0.0,-1.42109e-14,1.42109e-14,0.0,1.42109e-14,-1.42109e-14,0.0,5.68434e-14,0.0,-1.42109e-14,0.0,1.42109e-14,0.0,1.42109e-14,-1.42109e-14,-1.42109e-14,-4.26326e-14,-2.84217e-14,-5.68434e-14],[-1.42109e-14,-5.68434e-14,-1.42109e-14,-5.68434e-14,-7.10543e-14,-2.84217e-14,-1.42109e-14,-7.10543e-14,-2.84217e-14,-1.42109e-14,0.0,-1.42109e-14,-1.42109e-14,-4.26326e-14,-2.84217e-14,7.10543e-14,-1.42109e-14,-1.42109e-14,-2.84217e-14,-1.42109e-14,1.42109e-14,-4.26326e-14,-7.10543e-14,-1.42109e-14,5.68434e-14,4.26326e-14,-4.26326e-14,-2.84217e-14,1.42109e-14,-1.42109e-14,-1.42109e-14,0.0,-2.84217e-14,-2.84217e-14,1.42109e-14,-7.10543e-14],[0.0,-5.68434e-14,-2.84217e-14,0.0,-2.84217e-14,0.0,-1.42109e-14,-7.10543e-14,-5.68434e-14,-2.84217e-14,-5.68434e-14,-4.26326e-14,-7.10543e-14,-4.26326e-14,-2.84217e-14,-2.84217e-14,-1.42109e-14,1.42109e-14,0.0,-4.26326e-14,-1.42109e-14,-1.42109e-14,-2.84217e-14,-1.42109e-14,7.10543e-14,4.26326e-14,-7.10543e-14,-1.42109e-14,0.0,0.0,1.42109e-14,-1.42109e-14,-4.26326e-14,0.0,-2.84217e-14,-4.26326e-14],[-1.42109e-14,-1.42109e-14,1.42109e-14,-4.26326e-14,-4.26326e-14,0.0,-4.26326e-14,-4.26326e-14,0.0,1.42109e-14,0.0,1.42109e-14,-7.10543e-14,-2.84217e-14,-1.42109e-14,1.42109e-14,0.0,7.10543e-14,-2.84217e-14,-2.84217e-14,-2.84217e-14,0.0,-4.26326e-14,-1.42109e-14,7.10543e-14,2.84217e-14,0.0,2.84217e-14,-2.84217e-14,-4.26326e-14,0.0,-1.42109e-14,-2.84217e-14,0.0,-1.42109e-14,1.42109e-14],[0.0,-8.52651e-14,-1.42109e-14,-5.68434e-14,0.0,-1.42109e-14,-2.84217e-14,-2.84217e-14,-1.42109e-14,0.0,-9.9476e-14,-2.84217e-14,-7.10543e-14,0.0,-4.26326e-14,0.0,-4.26326e-14,4.26326e-14,0.0,-1.42109e-14,1.42109e-14,0.0,0.0,-2.84217e-14,5.68434e-14,1.42109e-14,-7.10543e-14,2.84217e-14,2.84217e-14,-1.42109e-14,1.42109e-14,2.84217e-14,1.42109e-14,0.0,-4.26326e-14,-2.84217e-14],[-4.26326e-14,-9.9476e-14,-1.42109e-14,-7.10543e-14,-5.68434e-14,-5.68434e-14,-5.68434e-14,-9.9476e-14,-7.10543e-14,-1.42109e-14,-7.10543e-14,-2.84217e-14,-4.26326e-14,0.0,-2.84217e-14,2.84217e-14,-5.68434e-14,-5.68434e-14,-5.68434e-14,-2.84217e-14,-4.26326e-14,-1.42109e-14,-5.68434e-14,-2.84217e-14,5.68434e-14,-1.42109e-14,-2.84217e-14,-5.68434e-14,-5.68434e-14,-4.26326e-14,-2.84217e-14,1.42109e-14,-7.10543e-14,-4.26326e-14,-7.10543e-14,-8.52651e-14],[-2.84217e-14,-5.68434e-14,-1.42109e-14,1.42109e-14,0.0,1.42109e-14,-4.26326e-14,-1.42109e-14,-4.26326e-14,1.42109e-14,0.0,0.0,-5.68434e-14,0.0,-2.84217e-14,-1.42109e-14,2.84217e-14,1.42109e-14,-4.26326e-14,-1.42109e-14,0.0,1.42109e-14,0.0,-1.42109e-14,7.10543e-14,0.0,-4.26326e-14,-1.42109e-14,1.42109e-14,0.0,2.84217e-14,2.84217e-14,5.68434e-14,-5.68434e-14,0.0,-5.68434e-14],[-1.42109e-14,-2.84217e-14,0.0,1.42109e-14,0.0,-1.42109e-14,4.26326e-14,-5.68434e-14,0.0,0.0,-2.84217e-14,-1.42109e-14,-2.84217e-14,-2.84217e-14,0.0,0.0,-2.84217e-14,4.26326e-14,1.42109e-14,1.42109e-14,0.0,-1.42109e-14,0.0,-1.42109e-14,5.68434e-14,0.0,2.84217e-14,-1.42109e-14,-2.84217e-14,1.42109e-14,4.26326e-14,2.84217e-14,-1.42109e-14,-2.84217e-14,-2.84217e-14,0.0],[4.26326e-14,-4.26326e-14,0.0,1.42109e-14,-2.84217e-14,1.42109e-14,0.0,-2.84217e-14,-4.26326e-14,2.84217e-14,-4.26326e-14,-1.42109e-14,0.0,7.10543e-14,0.0,4.26326e-14,0.0,4.26326e-14,1.42109e-14,1.42109e-14,-2.84217e-14,-1.42109e-14,-2.84217e-14,-1.42109e-14,5.68434e-14,1.42109e-14,1.42109e-14,-1.42109e-14,1.42109e-14,4.26326e-14,0.0,1.42109e-14,2.84217e-14,0.0,2.84217e-14,1.42109e-14],[2.84217e-14,-1.42109e-14,1.42109e-14,4.26326e-14,-5.68434e-14,0.0,-1.42109e-14,-1.42109e-14,-1.42109e-14,2.84217e-14,-2.84217e-14,2.84217e-14,-2.84217e-14,-4.26326e-14,1.42109e-14,1.42109e-14,0.0,4.26326e-14,1.42109e-14,0.0,-2.84217e-14,1.42109e-14,-5.68434e-14,-1.42109e-14,0.0,-1.42109e-14,1.42109e-14,1.42109e-14,1.42109e-14,0.0,1.42109e-14,1.42109e-14,0.0,1.42109e-14,4.26326e-14,-1.42109e-14],[-1.42109e-14,-4.26326e-14,-4.26326e-14,2.84217e-14,-1.42109e-14,2.84217e-14,-4.26326e-14,-1.42109e-14,0.0,-1.42109e-14,-7.10543e-14,-4.26326e-14,-4.26326e-14,-1.42109e-14,0.0,0.0,-1.42109e-14,-1.42109e-14,-1.42109e-14,-2.84217e-14,-5.68434e-14,-1.42109e-14,-1.42109e-14,-2.84217e-14,1.42109e-14,1.42109e-14,-1.42109e-14,-1.42109e-14,-2.84217e-14,-2.84217e-14,-1.42109e-14,0.0,0.0,-5.68434e-14,-2.84217e-14,-4.26326e-14],[0.0,-2.84217e-14,1.42109e-14,1.42109e-14,-2.84217e-14,-1.42109e-14,1.42109e-14,0.0,-1.42109e-14,-1.42109e-14,-2.84217e-14,1.42109e-14,0.0,-1.42109e-14,-1.42109e-14,4.26326e-14,0.0,4.26326e-14,0.0,-1.42109e-14,0.0,7.10543e-14,-2.84217e-14,1.42109e-14,7.10543e-14,4.26326e-14,-1.42109e-14,0.0,0.0,-4.26326e-14,4.26326e-14,1.42109e-14,1.42109e-14,2.84217e-14,0.0,0.0],[-2.84217e-14,-5.68434e-14,-2.84217e-14,-1.42109e-14,-4.26326e-14,-1.42109e-14,0.0,0.0,-4.26326e-14,-1.42109e-14,-4.26326e-14,-1.42109e-14,-5.68434e-14,-4.26326e-14,1.42109e-14,-1.42109e-14,-1.42109e-14,0.0,-1.42109e-14,0.0,-1.42109e-14,-2.84217e-14,-4.26326e-14,1.42109e-14,1.42109e-14,-2.84217e-14,-2.84217e-14,-2.84217e-14,-2.84217e-14,-2.84217e-14,-4.26326e-14,4.26326e-14,-4.26326e-14,-1.42109e-14,-1.42109e-14,-2.84217e-14]],"spread":2.4158453015843406e-13},"invariant":{"values":[[0.0,0.0,-1.66533e-16,0.0,-2.77556e-16,-2.22045e-16,0.0,-5.55112e-17,5.55112e-17,5.55112e-17,-5.55112e-17,-1.66533e-16,5.55112e-17,0.0,3.33067e-16,-3.88578e-16,1.66533e-16,-5.55112e-17,-1.66533e-16,1.66533e-16,2.22045e-16,0.0,-2.77556e-16,3.33067e-16,-5.55112e-17,5.55112e-17,-5.55112e-17,1.11022e-16,-5.55112e-17,0.0,-5.55112e-17,0.0,5.55112e-17,-5.55112e-17,-5.55112e-17,5.55112e-17],[1.11022e-16,-2.77556e-16,2.22045e-16,-5.55112e-17,-5.55112e-17,2.77556e-16,0.0,2.77556e-16,1.11022e-16,0.0,-5.55112e-17,2.22045e-16,5.55112e-17,5.55112e-17,3.33067e-16,4.44089e-16,-5.55112e-17,-5.55112e-17,-5.55112e-17,5.55112e-17,0.0,2.77556e-16,-5.55112e-17,3.33067e-16,-5.55112e-17,-3.88578e-16,5.55112e-17,3.88578e-16,-1.66533e-16,-2.77556e-16,0.0,-2.22045e-16,5.55112e-17,3.88578e-16,-2.22045e-16,2.77556e-16],[3.33067e-16,3.33067e-16,-1.66533e-16,5.55112e-17,-1.11022e-16,2.22045e-16,0.0,1.66533e-16,1.66533e-16,-5.55112e-17,2.22045e-16,-1.66533e-16,5.55112e-17,2.77556e-16,-2.77556e-16,5.55112e-17,2.22045e-16,5.55112e-17,4.996e-16,0.0,5.55112e-17,0.0,-1.11022e-16,-2.77556e-16,2.77556e-16,5.55112e-17,0.0,-5.55112e-17,-1.11022e-16,3.33067e-16,-5.55112e-17,1.11022e-16,1.66533e-16,2.77556e-16,0.0,1.66533e-16],[5.55112e-17,1.11022e-16,-3.88578e-16,-5.55112e-17,0.0,-1.11022e-16,2.22045e-16,-5.55112e-17,-5.55112e-17,2.77556e-16,2.77556e-16,-3.88578e-16,3.33067e-16,0.0,-4.44089e-16,-2.22045e-16,1.11022e-16,-4.996e-16,1.66533e-16,-5.55112e-17,-5.55112e-17,2.22045e-16,0.0,-4.44089e-16,-5.55112e-17,5.55112e-17,-1.66533e-16,2.77556e-16,-2.22045e-16,5.55112e-17,2.77556e-16,-5.55112e-17,1.66533e-16,-5.55112e-17,-6.10623e-16,5.55112e-17],[2.22045e-16,-5.55112e-17,0.0,1.11022e-16,2.22045e-16,2.22045e-16,0.0,-1.11022e-16,-1.66533e-16,5.55112e-17,-5.55112e-17,0.0,-5.55112e-17,5.55112e-17,1.66533e-16,-5.55112e-16,0.0,5.55112e-17,5.55112e-17,5.55112e-17,-3.88578e-16,-2.22045e-16,2.22045e-16,1.66533e-16,1.11022e-16,5.55112e-17,0.0,0.0,-5.55112e-17,5.55112e-17,2.77556e-16,5.55112e-17,-5.55112e-17,0.0,1.11022e-16,1.66533e-16],[5.55112e-17,2.77556e-16,4.996e-16,5.55112e-17,0.0,2.77556e-16,2.77556e-16,3.33067e-16,-3.88578e-16,0.0,2.77556e-16,4.996e-16,2.22045e-16,0.0,5.55112e-17,-5.55112e-17,5.55112e-17,5.55112e-17,-5.55112e-17,2.22045e-16,1.66533e-16,1.11022e-16,0.0,5.55112e-17,5.55112e-17,5.55112e-17,-2.77556e-16,2.77556e-16,-3.33067e-16,1.66533e-16,5.55112e-17,0.0,-1.66533e-16,1.66533e-16,2.77556e-16,-5.55112e-17],[-1.66533e-16,2.77556e-16,-5.55112e-17,-2.77556e-16,0.0,2.22045e-16,-1.11022e-16,-5.55112e-17,5.55112e-17,-5.55112e-17,-1.11022e-16,-5.55112e-17,5.55112e-17,-5.55112e-17,1.11022e-16,5.55112e-17,-1.66533e-16,-5.55112e-17,-1.11022e-16,5.55112e-17,2.77556e-16,0.0,0.0,1.11022e-16,-1.66533e-16,2.22045e-16,4.996e-16,-1.66533e-16,2.77556e-16,-5.55112e-17,0.0,5.55112e-17,2.77556e-16,5.55112e-17,5.55112e-17,-5.55112e-17],[0.0,-2.22045e-16,5.55112e-17,-2.77556e-16,0.0,1.66533e-16,5.55112e-17,1.66533e-16,-2.77556e-16,0.0,1.11022e-16,5.55112e-17,2.22045e-16,1.11022e-16,-2.22045e-16,-5.55112e-17,-2.22045e-16,2.22045e-16,-5.55112e-17,-2.22045e-16,-2.22045e-16,5.55112e-17,0.0,-2.22045e-16,5.55112e-17,-2.22045e-16,1.11022e-16,2.77556e-16,3.33067e-16,5.55112e-17,1.66533e-16,2.22045e-16,-1.66533e-16,-1.66533e-16,1.66533e-16,0.0],[5.55112e-17,0.0,-5.55112e-17,5.55112e-17,-5.55112e-17,5.55112e-17,2.77556e-16,-5.55112e-17,-1.66533e-16,1.11022e-16,-3.33067e-16,-5.55112e-17,-1.66533e-16,2.22045e-16,2.77556e-16,-1.66533e-16,5.55112e-17,2.77556e-16,5.55112e-17,-5.55112e-17,5.55112e-17,-1.11022e-16,-5.55112e-17,2.77556e-16,0.0,-5.55112e-17,1.66533e-16,1.66533e-16,-5.55112e-17,0.0,2.77556e-16,-5.55112e-17,0.0,-1.66533e-16,0.0,-1.66533e-16],[0.0,5.55112e-17,-5.55112e-17,-1.66533e-16,5.55112e-17,-5.55112e-17,0.0,1.66533e-16,2.77556e-16,2.77556e-16,-1.66533e-16,-5.55112e-17,-2.22045e-16,5.55112e-17,5.55112e-17,5.55112e-17,4.44089e-16,5.55112e-17,0.0,2.77556e-16,-5.55112e-17,1.11022e-16,5.55112e-17,5.55112e-17,-2.77556e-16,-1.66533e-16,5.55112e-17,0.0,5.55112e-17,-1.66533e-16,-1.66533e-16,-5.55112e-17,-5.55112e-17,-5.55112e-17,-5.55112e-17,1.66533e-16],[-3.88578e-16,-2.22045e-16,5.55112e-17,2.22045e-16,-5.55112e-17,0.0,5.55112e-16,0.0,-5.55112e-17,5.55112e-17,-1.66533e-16,5.55112e-17,-2.22045e-16,-1.66533e-16,-5.55112e-17,0.0,-2.22045e-16,-1.66533e-16,1.11022e-16,2.77556e-16,-5.55112e-17,2.22045e-16,-5.55112e-17,-5.55112e-17,-5.55112e-17,-5.55112e-17,5.55112e-17,0.0,-2.22045e-16,5.55112e-17,-5.55112e-17,-3.33067e-16,-1.11022e-16,-5.55112e-17,5.55112e-17,-5.55112e-17],[-5.55112e-17,-5.55112e-17,-1.11022e-16,-5.55112e-17,1.66533e-16,1.11022e-16,1.66533e-16,0.0,2.77556e-16,-5.55112e-17,1.66533e-16,-1.11022e-16,0.0,5.55112e-17,2.77556e-16,-1.66533e-16,5.55112e-17,7.21645e-16,-4.44089e-16,-1.66533e-16,1.11022e-16,5.55112e-17,1.66533e-16,2.77556e-16,-5.55112e-17,-1.66533e-16,-5.55112e-17,-1.66533e-16,5.55112e-17,-5.55112e-17,2.22045e-16,-1.11022e-16,-1.11022e-16,-3.88578e-16,5.55112e-17,-5.55112e-17],[-2.22045e-16,-5.55112e-17,-2.77556e-16,5.55112e-17,-5.55112e-17,1.66533e-16,-2.77556e-16,2.77556e-16,-1.11022e-16,0.0,1.66533e-16,-2.77556e-16,0.0,1.66533e-16,-1.66533e-16,-3.88578e-16,3.88578e-16,1.66533e-16,-1.66533e-16,0.0,0.0,-5.55112e-17,-5.55112e-17,-1.66533e-16,1.66533e-16,-5.55112e-17,0.0,0.0,-1.11022e-16,1.66533e-16,5.55112e-17,5.55112e-17,-1.66533e-16,0.0,-5.55112e-17,5.55112e-17],[1.11022e-16,-1.11022e-16,5.55112e-17,-5.55112e-17,-3.88578e-16,5.55112e-17,-2.77556e-16,-5.55112e-17,5.55112e-17,-1.66533e-16,-2.22045e-16,5.55112e-17,-5.55112e-17,-5.55112e-17,-1.11022e-16,2.77556e-16,3.33067e-16,2.77556e-16,2.77556e-16,-5.55112e-17,-5.55112e-17,-1.11022e-16,-3.88578e-16,-1.11022e-16,0.0,1.11022e-16,-1.11022e-16,-5.55112e-17,-2.77556e-16,-3.33067e-16,-5.55112e-17,-5.55112e-17,-5.55112e-17,-2.22045e-16,1.11022e-16,-4.996e-16],[-2.77556e-16,-1.66533e-16,5.55112e-17,1.11022e-16,5.55112e-17,-1.11022e-16,-5.55112e-17,-2.22045e-16,5.55112e-17,5.55112e-17,-1.11022e-16,5.55112e-17,-1.11022e-16,5.55112e-17,1.66533e-16,3.33067e-16,5.55112e-17,-1.66533e-16,2.22045e-16,-2.77556e-16,0.0,-5.55112e-17,5.55112e-17,1.66533e-16,1.11022e-16,-1.66533e-16,5.55112e-17,-5.55112e-17,5.55112e-17,-5.55112e-17,-1.11022e-16,-1.11022e-16,1.66533e-16,1.66533e-16,-5.55112e-17,0.0],[0.0,-2.77556e-16,-1.66533e-16,1.11022e-16,5.55112e-17,-1.66533e-16,-5.55112e-17,0.0,1.11022e-16,1.66533e-16,1.66533e-16,-1.66533e-16,1.11022e-16,-5.55112e-17,-1.66533e-16,-2.77556e-16,2.77556e-16,-2.77556e-16,1.11022e-16,1.66533e-16,0.0,1.66533e-16,5.55112e-17,-1.66533e-16,2.77556e-16,0.0,0.0,1.11022e-16,0.0,0.0,5.55112e-17,-2.22045e-16,-5.55112e-17,4.44089e-16,2.77556e-16,5.55112e-17],[-3.88578e-16,2.77556e-16,3.33067e-16,-1.11022e-16,0.0,5.55112e-17,0.0,2.22045e-16,1.66533e-16,-4.44089e-16,0.0,3.33067e-16,3.88578e-16,1.11022e-16,5.55112e-17,5.55112e-17,0.0,5.55112e-17,-2.22045e-16,0.0,1.66533e-16,-5.55112e-17,0.0,5.55112e-17,1.11022e-16,5.55112e-17,-1.11022e-16,5.55112e-17,2.22045e-16,5.55112e-17,2.77556e-16,-5.55112e-17,-5.55112e-17,-5.55112e-17,-5.55112e-17,5.55112e-17],[0.0,-1.66533e-16,5.55112e-17,-3.88578e-16,-1.66533e-16,2.77556e-16,1.11022e-16,5.55112e-17,5.55112e-17,-1.11022e-16,5.55112e-17,5.55112e-17,-1.66533e-16,5.55112e-17,-2.77556e-16,-4.44089e-16,-2.77556e-16,1.11022e-16,-3.88578e-16,0.0,0.0,5.55112e-17,-1.66533e-16,-2.77556e-16,-5.55112e-17,2.22045e-16,-5.55112e-17,5.55112e-17,0.0,-5.55112e-17,0.0,-5.55112e-17,0.0,-5.55112e-17,-1.11022e-16,-2.77556e-16],[5.55112e-17,0.0,-3.88578e-16,-5.55112e-17,0.0,-3.88578e-16,0.0,-3.33067e-16,4.996e-16,5.55112e-17,0.0,-3.88578e-16,1.66533e-16,5.55112e-17,-1.11022e-16,5.55112e-17,-5.55112e-17,-1.66533e-16,-1.66533e-16,3.33067e-16,0.0,1.66533e-16,0.0,-1.11022e-16,-5.55112e-17,-4.996e-16,5.55112e-17,-3.88578e-16,1.66533e-16,5.55112e-17,-5.55112e-17,-1.66533e-16,0.0,5.55112e-17,-3.33067e-16,-5.55112e-17]],"spread":1.3877787807814457e-15},"naive":{"values":[[-0.00490068,-0.00481929,-0.00453716,-0.00414793,-0.00375478,-0.00345679,-0.00333512,-0.00344106,-0.00378821,-0.00434987,-0.00506188,-0.00583006,-0.00654091,-0.00707451,-0.00731862,-0.00718324,-0.00661437,-0.00560527,-0.00420245,-0.00250438,-0.00065182,0.00118885,0.00284664,0.00416757,0.00503378,0.00537725,0.00518668,0.00450642,0.00342789,0.00207538,0.000588924,-0.000892452,-0.0022448,-0.00336966,-0.00420093,-0.00470879],[-0.00505522,-0.00529871,-0.00523805,-0.00495677,-0.00456077,-0.00416445,-0.00387493,-0.00377646,-0.00391787,-0.00430486,-0.00489822,-0.00561793,-0.0063523,-0.00697101,-0.00734097,-0.00734379,-0.00689342,-0.00595163,-0.00453837,-0.00273435,-0.000674354,0.00146799,0.00350152,0.00524148,0.0065323,0.00726605,0.00739406,0.0069299,0.00594386,0.00455033,0.00289134,0.00111947,-0.000617453,-0.00218892,-0.00349161,-0.0044568],[-0.00496077,-0.00555192,-0.00573911,-0.00559009,-0.00520833,-0.0047194,-0.00425389,-0.00392892,-0.00383113,-0.00400363,-0.00443904,-0.00507922,-0.00582175,-0.00653214,-0.00706047,-0.00726123,-0.00701432,-0.00624477,-0.00493777,-0.00314598,-0.000987063,0.00136862,0.00371826,0.00585166,0.00757723,0.00874508,0.00926364,0.00910769,0.00831687,0.00698605,0.00525062,0.00326982,0.00121069,-0.000766458,-0.00252081,-0.00394231],[-0.004652,-0.00558197,-0.00601408,-0.00599694,-0.0056285,-0.00504286,-0.00439222,-0.00382586,-0.00346896,-0.00340453,-0.00366088,-0.00420675,-0.0049544,-0.0057702,-0.00649132,-0.00694715,-0.00698309,-0.00648417,-0.00539478,-0.00373126,-0.00158453,0.000887958,0.00348019,0.00596272,0.00811113,0.00973329,0.0106913,0.0109151,0.0104059,0.00923086,0.00751136,0.00540715,0.00309992,0.000777051,-0.00138416,-0.00323159],[-0.00417672,-0.00540493,-0.00605023,-0.00614116,-0.00576901,-0.00507518,-0.00423209,-0.00341972,-0.00280073,-0.00249757,-0.00257494,-0.00303025,-0.00379313,-0.00473403,-0.00568045,-0.00643921,-0.00682249,-0.00667464,-0.00589636,-0.00446259,-0.00243075,6.22966e-05,0.00281491,0.00558494,0.00811982,0.0101874,0.0116029,0.0122482,0.0120814,0.0111364,0.00951472,0.00737147,0.00489872,0.00230737,-0.000191289,-0.00240457],[-0.00358934,-0.00504554,-0.00584633,-0.00600159,-0.00559663,-0.00477988,-0.00374261,-0.0026931,-0.00182836,-0.00130713,-0.00122786,-0.00161509,-0.00241564,-0.00350516,-0.00470364,-0.0057982,-0.00657063,-0.00682682,-0.0064246,-0.00529647,-0.0034634,-0.00103694,0.00179153,0.00477358,0.00763442,0.0101067,0.0119617,0.0130342,0.0132381,0.0125716,0.011113,0.00900895,0.00645766,0.00368939,0.000945086,-0.00154605],[-0.00294447,-0.00453319,-0.00541057,-0.00557162,-0.00509785,-0.00414495,-0.00292128,-0.00165969,-0.000586332,0.00010976,0.000302027,-5.65684e-05,-0.000927132,-0.00218958,-0.00365758,-0.00510156,-0.00627727,-0.00695701,-0.00696028,-0.00618042,-0.00460316,-0.00231365,0.000510651,0.00362057,0.00672604,0.00953165,0.0117714,0.0132382,0.0138051,0.0134357,0.0121844,0.010187,0.00764417,0.00480039,0.00192039,-0.000736811],[-0.0022915,-0.00389909,-0.00475977,-0.00485969,-0.00427985,-0.00318367,-0.00179401,-0.000362993,0.000861524,0.00166864,0.00191213,0.00152963,0.000550863,-0.000905953,-0.00264861,-0.00443409,-0.00599771,-0.00708536,-0.00748593,-0.00706068,-0.00576542,-0.00366126,-0.000910786,0.00224057,0.00549469,0.00853723,0.0110746,0.012867,0.0137541,0.0136698,0.0126468,0.0108093,0.00835697,0.00554333,0.00264927,-4.53557e-05],[-0.00167055,-0.00317496,-0.00392012,-0.00389105,-0.00317242,-0.00193564,-0.000414503,0.00112654,0.0024273,0.00326562,0.00348604,0.00301985,0.0018941,0.000228362,-0.00177954,-0.00387682,-0.00578494,-0.00723225,-0.00798709,-0.00788865,-0.00687121,-0.00497723,-0.00235573,0.000754664,0.00405492,0.00722188,0.00994624,0.0119676,0.0131028,0.0132644,0.012468,0.0108273,0.00853858,0.00585835,0.00307523,0.000479129],[-0.0011098,-0.00239238,-0.00292821,-0.00270969,-0.00182962,-0.000467212,0.00113739,0.00271575,0.00400617,0.00478717,0.00490557,0.0042961,0.00298997,0.00111144,-0.0011366,-0.00349577,-0.0056811,-0.00741323,-0.00845137,-0.00862426,-0.00785489,-0.0061743,-0.00372083,-0.000724388,0.00252158,0.00569536,0.00848462,0.0106218,0.0119137,0.0122618,0.0116714,0.0102481,0.00818321,0.00573054,0.00317723,0.00081157],[-0.000624035,-0.00158226,-0.00183106,-0.00137844,-0.00032922,0.00113054,0.00275987,0.00429541,0.00548536,0.00612106,0.00606307,0.00525896,0.00375042,0.00166904,-0.000778399,-0.00333267,-0.00571019,-0.00763412,-0.00886624,-0.00923674,-0.00866794,-0.00718712,-0.00492551,-0.00210308,0.000997961,0.00406683,0.00680027,0.00893698,0.0102868,0.0107513,0.0103333,0.00913395,0.00733834,0.0051922,0.00297212,0.000953112],[-0.000214503,-0.000773629,-0.00068395,2.42811e-05,0.00123187,0.00274799,0.00433693,0.00574947,0.00675449,0.00716732,0.00687241,0.00583812,0.00412154,0.00186301,-0.000728852,-0.00339918,-0.00587365,-0.00788782,-0.00921702,-0.00970391,-0.00927969,-0.00797471,-0.00591625,-0.00331351,-0.000432674,0.0024345,0.00500441,0.00703399,0.00834817,0.00885912,0.00857478,0.00759548,0.00609941,0.00431918,0.00251246,0.000930198],[0.000130049,8.22027e-06,0.000454192,0.00141167,0.00274691,0.00426771,0.00574989,0.00696662,0.00771661,0.00784816,0.00727743,0.00599915,0.00408864,0.00169475,-0.000975053,-0.00367578,-0.00614983,-0.00815399,-0.00948658,-0.0100117,-0.0096767,-0.00852016,-0.00666746,-0.00431611,-0.00171236,0.000877486,0.00319796,0.00503388,0.00623505,0.00673282,0.00654643,0.00577815,0.00459819,0.00322154,0.0018797,0.000790588],[0.000430857,0.000743744,0.0015272,0.00269856,0.00411188,0.0055782,0.00689097,0.00785259,0.00829836,0.00811562,0.00725684,0.00574572,0.00367604,0.0012032,-0.00147054,-0.00411558,-0.00649765,-0.00840201,-0.00965698,-0.0101541,-0.00986174,-0.00882901,-0.0071802,-0.0050998,-0.00281104,-0.000549907,0.00146241,0.00304554,0.00408091,0.00452466,0.00441087,0.00384467,0.00298651,0.00202963,0.00117353,0.000596524],[0.000715252,0.00142066,0.00248818,0.00381202,0.00523871,0.006588,0.00767664,0.00834136,0.00845817,0.00795615,0.00682514,0.00511714,0.002942,0.000457787,-0.0021432,-0.0046521,-0.00686345,-0.008596,-0.00971227,-0.0101342,-0.00985229,-0.00892662,-0.0074793,-0.00568009,-0.00372656,-0.00182097,-0.000146268,0.00115597,0.00200208,0.00237503,0.00232403,0.00195563,0.00141756,0.000877413,0.000498474,0.000415705],[0.00101181,0.00203432,0.0033046,0.00469997,0.00606594,0.00723697,0.00805795,0.00840327,0.00819107,0.00739167,0.00602994,0.00418236,0.00196999,-0.000451731,-0.00290589,-0.00520925,-0.00718915,-0.00870056,-0.00964136,-0.00996355,-0.00967833,-0.0088543,-0.00760904,-0.0060951,-0.00448202,-0.00293608,-0.00160007,-0.000575736,8.79521e-05,0.000399028,0.000418792,0.000251258,2.73127e-05,-0.000114754,-5.0356e-05,0.000311368],[0.00134523,0.0025866,0.00396054,0.00533591,0.0065648,0.00750242,0.00802574,0.0080483,0.00752938,0.00647718,0.0049464,0.00303168,0.000858609,-0.00142644,-0.00366747,-0.00571111,-0.00741997,-0.0086857,-0.00944004,-0.0096619,-0.00937907,-0.0086645,-0.00762727,-0.00639952,-0.00512037,-0.00391879,-0.00289744,-0.00212001,-0.00160441,-0.00132271,-0.00120756,-0.00116341,-0.00108119,-0.000855062,-0.000399892,0.000333094],[0.00173177,0.00308348,0.0044559,0.00571903,0.00673959,0.00739922,0.00760981,0.00732383,0.00653864,0.00529475,0.00366946,0.00176755,-0.000288631,-0.00236859,-0.00434252,-0.00609027,-0.00751068,-0.00853061,-0.00911199,-0.0092554,-0.00899934,-0.00841521,-0.00759851,-0.00665692,-0.0056967,-0.00480903,-0.0040583,-0.00347455,-0.00305119,-0.00274832,-0.0025006,-0.00222804,-0.00184842,-0.00129068,-0.000508211,0.000509825],[0.00217556,0.00353152,0.00480284,0.00587032,0.00662314,0.00697432,0.00687237,0.00630707,0.00530916,0.00394442,0.00230422,0.000494733,-0.00137295,-0.00319071,-0.00485945,-0.00629438,-0.00743023,-0.00822613,-0.00866909,-0.00877482,-0.0085854,-0.00816385,-0.00758598,-0.00693049,-0.00626846,-0.00565371,-0.00511608,-0.00465852,-0.00425863,-0.00387406,-0.0034504,-0.00293023,-0.00226255,-0.00141219,-0.000368809,0.000845955]],"spread":0.02402819123258282}},"comparison":[{"key":"painn","test_mae":43.43254765786378,"params":575765},{"key":"angular","test_mae":52.26701658083784,"params":369481},{"key":"baseline","test_mae":56.03475318058448,"params":277257},{"key":"tfn","test_mae":59.434075639117225,"params":572681}],"ablation":[{"l_max":0,"test_mae":113.58748420656222,"params":154505},{"l_max":1,"test_mae":89.55042480520656,"params":306249},{"l_max":2,"test_mae":78.63084500173214,"params":572681}],"scaling":{"baseline":{"mean":0.40586954823525145,"std":0.005640237028297713,"min_r_squared":0.9973226796534032},"equivariant":{"mean":0.4619504117578049,"std":0.0059502160750800875,"min_r_squared":0.9969193464727079}},"scaling_delta":{"per_seed":{"0":0.04417646988546731,"1":0.06352768233253925,"2":0.06053843834965378},"mean":0.05608086352255345,"std":0.010417285433227168,"steeper_in_n_seeds":3,"n_seeds":3},"multiseed":[{"train_fraction":0.1,"train_size":11000,"ratios":{"0":1.1666641310945962,"1":1.1189863315437698,"2":1.080938744103841},"mean":1.1221964022474022,"std":0.04295275205525751,"n":3},{"train_fraction":0.25,"train_size":27500,"ratios":{"0":1.176609175595562,"1":1.148895786834069,"2":1.1402558516288572},"mean":1.1552536046861628,"std":0.018992299143004026,"n":3},{"train_fraction":0.5,"train_size":55000,"ratios":{"0":1.2276950310058627,"1":1.235263371099257,"2":1.1961553598982069},"mean":1.2197045873344423,"std":0.020742336598729073,"n":3},{"train_fraction":1.0,"train_size":110000,"ratios":{"0":1.2901557979511935,"1":1.2859455200224132,"2":1.240193222004593},"mean":1.2720981799927333,"std":0.0277105822426765,"n":3}],"md17":[{"train_size":250,"baseline":{"run_name":"baseline_ethanol_n250_s0","steps":25600,"val_force_mae":0.5302866929553902,"test_force_mae":0.5378260747419364,"test_energy_mae":0.108642334725684,"best_epoch":1599,"epochs":1600},"painn":{"run_name":"painn_ethanol_n250_e12500_s0","steps":200000,"val_force_mae":0.9085765782087702,"test_force_mae":0.9284475263698408,"test_energy_mae":0.21476351157578372,"best_epoch":2714,"epochs":12500},"ratio":0.5792746056902057},{"train_size":500,"baseline":{"run_name":"baseline_ethanol_n500_s0","steps":25600,"val_force_mae":0.3711799150237066,"test_force_mae":0.3846672304877899,"test_energy_mae":0.08499983874458708,"best_epoch":799,"epochs":800},"painn":{"run_name":"painn_ethanol_n500_e6250_s0","steps":200000,"val_force_mae":0.5193724866246451,"test_force_mae":0.5332786870104043,"test_energy_mae":0.11730666313654876,"best_epoch":4377,"epochs":6250},"ratio":0.7213249654589797},{"train_size":1000,"baseline":{"run_name":"baseline_ethanol_n1000_e3174_s0","steps":199962,"val_force_mae":0.2938215441542176,"test_force_mae":0.30467771216665746,"test_energy_mae":0.08242155273935145,"best_epoch":600,"epochs":3174},"painn":{"run_name":"painn_ethanol_n1000_e3174_s0","steps":199962,"val_force_mae":0.30304161771175603,"test_force_mae":0.31245143184596663,"test_energy_mae":0.0711131259147962,"best_epoch":2996,"epochs":3174},"ratio":0.9751202302598456},{"train_size":2000,"baseline":{"run_name":"baseline_ethanol_n2000_e1600_s0","steps":200000,"val_force_mae":0.1701099838301436,"test_force_mae":0.17534510059620953,"test_energy_mae":0.061376059173760676,"best_epoch":1599,"epochs":1600},"painn":{"run_name":"painn_ethanol_n2000_e1600_s0","steps":200000,"val_force_mae":0.16959362732690836,"test_force_mae":0.17552915495454735,"test_energy_mae":0.05538061960768673,"best_epoch":1594,"epochs":1600},"ratio":0.9989514314110071}],"irrep":[{"degree":0,"rms_per_component":1.0091631318534793,"grad_per_component":0.003343343102417549,"components":1,"rms_relative_to_l0":1.0,"grad_relative_to_l0":1.0},{"degree":1,"rms_per_component":1.0205240410471235,"grad_per_component":0.0012395374791238853,"components":3,"rms_relative_to_l0":1.011257752919271,"grad_relative_to_l0":0.3707479134365791},{"degree":2,"rms_per_component":1.0346067488988426,"grad_per_component":0.0009076284063781008,"components":5,"rms_relative_to_l0":1.0252125907519356,"grad_relative_to_l0":0.2714733063806107}],"equivariance":{"Equivariant TFN (l_max=2)":1.275874514176539e-15,"Invariant baseline (distances)":2.808437853544972e-15,"Naive GNN (raw coordinates)":0.011646274917048966,"Naive MLP (raw coordinates)":12.634034623840796}}</script>
+
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("site-data").textContent);
+
+  var CSS = getComputedStyle(document.documentElement);
+  function tone(name) { return CSS.getPropertyValue(name).trim(); }
+
+  var MODEL_META = {
+    painn:    { label: "Equivariant PaiNN",  sub: "l<=1, vector algebra",  chan: "var(--locked)" },
+    angular:  { label: "Angle-aware",        sub: "invariant + angles",    chan: "var(--gold)" },
+    baseline: { label: "Distance-only",      sub: "invariant, no angles",  chan: "var(--phase-neg)" },
+    tfn:      { label: "Equivariant TFN",    sub: "l<=2, Clebsch-Gordan",  chan: "var(--phase-pos)" }
+  };
+
+  function fmt(v, dp) { return v.toFixed(dp === undefined ? 2 : dp); }
+  function sci(v) {
+    var a = Math.abs(v);
+    if (a === 0) return "0";
+    if (a < 1e-3 || a >= 1e4) {
+      var s = a.toExponential(1).split("e");
+      return s[0] + "\u00d710" + sup(parseInt(s[1], 10));
+    }
+    return a < 1 ? a.toFixed(3) : a.toFixed(2);
+  }
+  function sup(n) {
+    var map = { "-": "\u207b", 0: "\u2070", 1: "\u00b9", 2: "\u00b2", 3: "\u00b3",
+                4: "\u2074", 5: "\u2075", 6: "\u2076", 7: "\u2077", 8: "\u2078", 9: "\u2079" };
+    return String(n).split("").map(function (c) { return map[c] || c; }).join("");
+  }
+
+  // ------------------------------------------------------------- hero flags
+  var eq = D.equivariance || {};
+  var flagEl = document.getElementById("flags");
+  var flags = ["259 tests", "verified in float64"];
+
+  // Compare against the architecture-matched control (the naive GNN), not whichever
+  // model happens to be worst. The naive MLP is a weaker network and drifts further, so
+  // using it would inflate the claim by three orders of magnitude for free -- and would
+  // disagree with the figure quoted in the README.
+  function pick(fragment) {
+    var hit = Object.keys(eq).filter(function (k) {
+      return k.toLowerCase().indexOf(fragment) !== -1;
+    })[0];
+    return hit ? eq[hit] : null;
+  }
+  var equivariant = pick("tfn"), control = pick("naive gnn");
+  if (equivariant && control) {
+    flags.push(Math.round(Math.log10(control / equivariant)) +
+               " orders of magnitude flatter than raw coordinates");
+  }
+  flags.forEach(function (label) {
+    var s = document.createElement("span");
+    s.className = "flag";
+    s.textContent = label;
+    flagEl.appendChild(s);
+  });
+
+  // --------------------------------------------------------- comparison bars
+  var comp = D.comparison || [];
+  if (comp.length) {
+    var worst = Math.max.apply(null, comp.map(function (r) { return r.test_mae; }));
+    var host = document.getElementById("comparison");
+    comp.forEach(function (r) {
+      var meta = MODEL_META[r.key] || { label: r.key, sub: "", chan: "var(--faint)" };
+      var row = document.createElement("div");
+      row.className = "bar-row";
+      row.style.setProperty("--chan", meta.chan);
+      row.innerHTML =
+        '<div class="bar-label">' + meta.label + "<small>" + meta.sub + "</small></div>" +
+        '<div class="bar-track">' +
+          '<div class="bar-fill" style="width:' + (r.test_mae / worst * 100).toFixed(1) + '%"></div>' +
+          '<span class="bar-num">' + fmt(r.test_mae) + " meV</span>" +
+        "</div>";
+      host.appendChild(row);
+    });
+
+    var by = {};
+    comp.forEach(function (r) { by[r.key] = r.test_mae; });
+    if (by.baseline && by.angular && by.painn) {
+      var a = (1 - by.angular / by.baseline) * 100;
+      var e = (1 - by.painn / by.angular) * 100;
+      var t = (1 - by.painn / by.baseline) * 100;
+      [["\u2212" + fmt(a, 1) + "%", "from angles alone, in invariant form", "var(--gold)"],
+       ["\u2212" + fmt(e, 1) + "%", "from equivariance, on top of angles", "var(--locked)"],
+       ["\u2212" + fmt(t, 1) + "%", "total, versus distance-only", "var(--dim)"]
+      ].forEach(function (d) {
+        var cell = document.createElement("div");
+        cell.innerHTML = '<span class="big" style="color:' + d[2] + '">' + d[0] +
+                         '</span><span class="cap">' + d[1] + "</span>";
+        document.getElementById("decomp").appendChild(cell);
+      });
+    }
+  }
+
+  // ------------------------------------------------------------- multiseed
+  var ms = D.multiseed || [];
+  if (ms.length) {
+    var t = document.getElementById("multiseed");
+    t.innerHTML = "<thead><tr><th>training molecules</th><th>advantage</th>" +
+                  "<th>spread (3 seeds)</th></tr></thead><tbody>" +
+      ms.map(function (r) {
+        return "<tr><td>" + r.train_size.toLocaleString() + "</td><td>" +
+               fmt(r.mean, 3) + "\u00d7</td><td>\u00b1" + fmt(r.std, 3) + "</td></tr>";
+      }).join("") + "</tbody>";
+  }
+
+  // --------------------------------------------------------------- scaling
+  var sc = D.scaling || {}, sd = D.scaling_delta || {};
+  if (sc.baseline && sc.equivariant) {
+    var minR2 = Math.min(sc.baseline.min_r_squared, sc.equivariant.min_r_squared);
+    document.getElementById("r2min").textContent = "R\u00b2 \u2265 " + minR2.toFixed(3);
+    [[fmt(sc.baseline.mean, 3), "baseline exponent b", "var(--phase-neg)"],
+     [fmt(sc.equivariant.mean, 3), "equivariant exponent b", "var(--locked)"],
+     ["+" + fmt(sd.mean, 3), "steeper, in " + sd.steeper_in_n_seeds + "/" + sd.n_seeds + " seeds", "var(--dim)"]
+    ].forEach(function (d) {
+      var cell = document.createElement("div");
+      cell.innerHTML = '<span class="big" style="color:' + d[2] + '">' + d[0] +
+                       '</span><span class="cap">' + d[1] + "</span>";
+      document.getElementById("scaling").appendChild(cell);
+    });
+  }
+
+  // ----------------------------------------------------------------- irrep
+  var ir = D.irrep || [];
+  if (ir.length) {
+    var t2 = document.getElementById("irrep");
+    t2.innerHTML = "<thead><tr><th>degree</th><th>magnitude</th><th>influence</th></tr></thead><tbody>" +
+      ir.map(function (r) {
+        return "<tr><td>l = " + r.degree + "</td><td>" + fmt(r.rms_relative_to_l0, 2) +
+               "\u00d7</td><td>" + fmt(r.grad_relative_to_l0, 2) + "\u00d7</td></tr>";
+      }).join("") + "</tbody>";
+  }
+
+  // -------------------------------------------------------------- ablation
+  var ab = D.ablation || [];
+  if (ab.length) {
+    var worstA = Math.max.apply(null, ab.map(function (r) { return r.test_mae; }));
+    var hostA = document.getElementById("ablation");
+    var shades = ["var(--faint)", "var(--phase-neg)", "var(--locked)"];
+    ab.forEach(function (r, i) {
+      var row = document.createElement("div");
+      row.className = "bar-row";
+      row.style.setProperty("--chan", shades[i] || "var(--locked)");
+      row.style.gridTemplateColumns = "5rem 1fr";
+      row.innerHTML =
+        '<div class="bar-label">l_max = ' + r.l_max + "</div>" +
+        '<div class="bar-track"><div class="bar-fill" style="width:' +
+        (r.test_mae / worstA * 100).toFixed(1) + '%"></div><span class="bar-num">' +
+        fmt(r.test_mae, 1) + "</span></div>";
+      hostA.appendChild(row);
+    });
+  }
+
+  // ------------------------------------------------------------------ md17
+  var md = D.md17 || [];
+  if (md.length) {
+    var t3 = document.getElementById("md17");
+    t3.innerHTML = "<thead><tr><th>configurations</th><th>distance-only</th>" +
+                   "<th>equivariant</th><th>ratio</th></tr></thead><tbody>" +
+      md.map(function (r) {
+        return "<tr><td>" + r.train_size.toLocaleString() + "</td><td>" +
+               fmt(r.baseline.test_force_mae, 4) + "</td><td>" +
+               fmt(r.painn.test_force_mae, 4) + "</td><td>" + fmt(r.ratio, 2) + "</td></tr>";
+      }).join("") + "</tbody>";
+  }
+
+  // -------------------------------------------------------- live molecule
+  var MOL = D.molecule || {}, GRID = D.grid || {}, MODELS = D.models || {};
+  var CHANNELS = [
+    { key: "equivariant", name: "Equivariant", chan: "var(--locked)" },
+    { key: "invariant",   name: "Distance-only", chan: "var(--phase-neg)" },
+    { key: "naive",       name: "Raw coordinates", chan: "var(--phase-pos)" }
+  ];
+
+  var nodes = {};
+  var rHost = document.getElementById("readouts");
+  CHANNELS.forEach(function (c) {
+    if (!MODELS[c.key]) return;
+    var el = document.createElement("div");
+    el.className = "readout";
+    el.style.setProperty("--chan", c.chan);
+    el.innerHTML = '<span class="readout-name">' + c.name +
+                   '</span><span class="readout-val">0</span>';
+    rHost.appendChild(el);
+    nodes[c.key] = el.querySelector(".readout-val");
+  });
+
+  if (MOL.formula) {
+    document.getElementById("formula").textContent =
+      MOL.formula + " \u00b7 " + MOL.atoms.length + " atoms";
+  }
+
+  function rot(az, el) {
+    var ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+    return [[ca * ce, -sa, ca * se], [sa * ce, ca, sa * se], [-se, 0, ce]];
+  }
+  function apply(R, p) {
+    return [R[0][0]*p[0] + R[0][1]*p[1] + R[0][2]*p[2],
+            R[1][0]*p[0] + R[1][1]*p[1] + R[1][2]*p[2],
+            R[2][0]*p[0] + R[2][1]*p[1] + R[2][2]*p[2]];
+  }
+  function predict(key, az, el) {
+    var g = MODELS[key].values, nA = GRID.n_azimuth, nE = GRID.n_elevation, TAU = Math.PI * 2;
+    var a = ((az % TAU) + TAU) % TAU, fa = a / GRID.azimuth_step;
+    var a0 = Math.floor(fa) % nA, a1 = (a0 + 1) % nA, ta = fa - Math.floor(fa);
+    var cl = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, el));
+    var fe = (cl - GRID.elevation_start) / GRID.elevation_step;
+    var e0 = Math.max(0, Math.min(nE - 1, Math.floor(fe))), e1 = Math.min(nE - 1, e0 + 1);
+    var te = fe - e0;
+    var top = g[e0][a0] * (1 - ta) + g[e0][a1] * ta;
+    var bot = g[e1][a0] * (1 - ta) + g[e1][a1] * ta;
+    return top * (1 - te) + bot * te;
+  }
+
+  var azimuth = 0, elevation = 0.35, spinning = true;
+  var ref = {};
+  CHANNELS.forEach(function (c) { if (MODELS[c.key]) ref[c.key] = predict(c.key, 0, 0.35); });
+
+  var canvas = document.getElementById("mol"), ctx = canvas.getContext("2d"), dpr = 1;
+  var extent = MOL.atoms ? Math.max.apply(null, MOL.atoms.map(function (a) {
+    return Math.hypot(a.pos[0], a.pos[1], a.pos[2]);
+  })) : 1;
+
+  function resize() {
+    var r = canvas.parentElement.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.round(r.width * dpr));
+    canvas.height = Math.max(1, Math.round(r.height * dpr));
+  }
+  function shade(hex, amt) {
+    var n = parseInt(hex.slice(1), 16), c = function (v) { return Math.max(0, Math.min(255, Math.round(v))); };
+    return "rgb(" + c(((n >> 16) & 255) * (1 + amt)) + "," + c(((n >> 8) & 255) * (1 + amt)) +
+           "," + c((n & 255) * (1 + amt)) + ")";
+  }
+  function draw() {
+    if (!MOL.atoms) return;
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    var R = rot(azimuth, elevation), scale = Math.min(w, h) / (2.6 * extent);
+    var cx = w / 2, cy = h / 2;
+    var pts = MOL.atoms.map(function (atom, i) {
+      var p = apply(R, atom.pos);
+      return { i: i, x: cx + p[0] * scale, y: cy - p[2] * scale, d: p[1], atom: atom };
+    });
+    ctx.lineCap = "round";
+    (MOL.bonds || []).forEach(function (b) {
+      var A = pts[b[0]], B = pts[b[1]], t = ((A.d + B.d) / 2 / extent + 1) / 2;
+      ctx.strokeStyle = "rgba(150,163,190," + (0.26 + 0.44 * t).toFixed(3) + ")";
+      ctx.lineWidth = (1.9 + 1.3 * t) * dpr;
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+    });
+    pts.sort(function (a, b) { return a.d - b.d; });
+    pts.forEach(function (p) {
+      var t = (p.d / extent + 1) / 2, r = p.atom.radius * scale * (0.6 + 0.16 * t);
+      var g = ctx.createRadialGradient(p.x - r * 0.32, p.y - r * 0.36, r * 0.1, p.x, p.y, r);
+      g.addColorStop(0, "#ffffff");
+      g.addColorStop(0.35, p.atom.color);
+      g.addColorStop(1, shade(p.atom.color, -0.45));
+      ctx.fillStyle = g; ctx.globalAlpha = 0.55 + 0.45 * t;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  }
+  function update() {
+    CHANNELS.forEach(function (c) {
+      if (!MODELS[c.key]) return;
+      var drift = Math.abs(predict(c.key, azimuth, elevation) - ref[c.key]);
+      nodes[c.key].textContent = drift < 1e-11 ? drift.toExponential(1) : drift.toFixed(5);
+    });
+    document.getElementById("orient").textContent =
+      "az " + Math.round((azimuth * 180 / Math.PI) % 360) + "\u00b0 \u00b7 el " +
+      Math.round(elevation * 180 / Math.PI) + "\u00b0";
+    draw();
+  }
+
+  var stage = document.getElementById("stage"), dragging = false, lx = 0, ly = 0;
+  stage.addEventListener("pointerdown", function (e) {
+    dragging = true; spinning = false; lx = e.clientX; ly = e.clientY;
+    if (stage.setPointerCapture) stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+    azimuth += (e.clientX - lx) * 0.011;
+    elevation = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, elevation + (e.clientY - ly) * 0.009));
+    lx = e.clientX; ly = e.clientY; update();
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) {
+    stage.addEventListener(ev, function () { dragging = false; });
+  });
+  window.addEventListener("resize", function () { resize(); update(); });
+
+  function tick() {
+    if (spinning) { azimuth += 0.0055; elevation = 0.35 + Math.sin(azimuth * 0.31) * 0.28; update(); }
+    requestAnimationFrame(tick);
+  }
+  resize(); update();
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) requestAnimationFrame(tick);
+  else spinning = false;
+})();
+</script>
