@@ -29,12 +29,19 @@ RUNS = Path.home() / ".symmetrynet" / "runs"
 BASELINE_COLOR = "#2a9d5c"
 TFN_COLOR = "#1b6ca8"
 PAINN_COLOR = "#8e44ad"
+ANGULAR_COLOR = "#d68910"
 LABELS = {
-    "baseline": "Invariant baseline (distances only)",
+    "baseline": "Invariant, distances only",
+    "angular": "Invariant, angle-aware (the control)",
     "tfn": "Equivariant TFN (Clebsch-Gordan, l<=2)",
     "painn": "Equivariant PaiNN (vector algebra, l<=1)",
 }
-COLORS = {"baseline": BASELINE_COLOR, "tfn": TFN_COLOR, "painn": PAINN_COLOR}
+COLORS = {
+    "baseline": BASELINE_COLOR,
+    "angular": ANGULAR_COLOR,
+    "tfn": TFN_COLOR,
+    "painn": PAINN_COLOR,
+}
 
 
 def load(name: str) -> list[dict] | None:

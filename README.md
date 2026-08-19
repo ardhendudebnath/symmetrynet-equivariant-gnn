@@ -149,15 +149,42 @@ works. Hence per-component normalisation throughout above.
 </details> Note the
 baseline line already sits below all three bars — which is the next result.
 
-### The headline: equivariance wins, but only with the right architecture
+### The headline: equivariance wins, and it is not just angle-awareness
 
-All three at 200 epochs, same loop, same data, same schedule:
+All four at 200 epochs, same loop, same data, same schedule:
 
-| model | equivariance via | params | test MAE | train time |
-|---|---|---|---|---|
-| **Equivariant PaiNN** (`l<=1`) | vector algebra | 576k | **43.43 meV** | 81 min |
-| Distance-only baseline | discards direction | 277k | 56.03 meV | 37 min |
-| Equivariant TFN (`l_max=2`) | Clebsch-Gordan products | 573k | 59.43 meV | 277 min |
+| model | equivariant? | sees angles? | params | test MAE | ms/step |
+|---|---|---|---|---|---|
+| **Equivariant PaiNN** (`l<=1`) | ✔ | ✔ | 576k | **43.43 meV** | 13.3 |
+| Angle-aware invariant | ✘ | ✔ | 369k | 52.27 meV | 71 |
+| Distance-only baseline | ✘ | ✘ | 277k | 56.03 meV | 6.9 |
+| Equivariant TFN (`l_max=2`) | ✔ | ✔ | 573k | 59.43 meV | 67.9 |
+
+The angle-aware invariant model is the control that makes this readable. Without it,
+equivariance and angular information are confounded — every equivariant model here also
+sees angles, and the only angle-free model is also the only non-equivariant one. With it,
+the 22.5% gap decomposes:
+
+- **angles alone, in invariant form: 56.03 → 52.27 meV (−6.7%)**
+- **equivariance on top of that: 52.27 → 43.43 meV (−16.9%)**
+
+So angular information accounts for under a third of PaiNN's advantage. **Equivariance
+contributes roughly two and a half times more than angle-awareness does** — it is not
+merely an expensive way to obtain angles, which was the live alternative explanation.
+
+The mechanism is visible in the design. The angular model reads angles as
+:math:`P_\ell(\cos\theta)` and immediately collapses them to scalars, so a later layer
+cannot compose them geometrically. An equivariant model carries direction forward as an
+`l>0` feature that later layers can keep operating on. Access to angles is the same; what
+differs is whether that information survives the next layer.
+
+The cost column sharpens it further. The angle-aware model is **5× slower per step than
+PaiNN and still 20% worse**: enumerating ~414k explicit triplets per batch is a strictly
+worse deal than equivariant vector algebra, which obtains the same angular content as a
+by-product of its representation.
+
+And the TFN — equivariant, `l_max=2` — is beaten by an *invariant* model. Being
+equivariant is no guarantee of anything by itself.
 
 PaiNN beats the baseline by **22.5%** and the TFN by **26.9%** — and does it in under a
 third of the TFN's compute at the same parameter count. Published PaiNN on this exact

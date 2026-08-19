@@ -196,11 +196,42 @@ representational claim.
 **Equivariance wins decisively — but only after changing which equivariant architecture is
 used.** At a matched 200-epoch budget:
 
-| model | equivariance via | params | test MAE | time |
-|---|---|---|---|---|
-| PaiNN (`l<=1`) | vector algebra | 576k | **43.43 meV** | 81 min |
-| distance-only baseline | discards direction | 277k | 56.03 meV | 37 min |
-| TFN (`l_max=2`) | Clebsch-Gordan | 573k | 59.43 meV | 277 min |
+| model | equivariant? | sees angles? | params | test MAE | ms/step |
+|---|---|---|---|---|---|
+| PaiNN (`l<=1`) | yes | yes | 576k | **43.43 meV** | 13.3 |
+| angle-aware invariant | no | yes | 369k | 52.27 meV | 71 |
+| distance-only baseline | no | no | 277k | 56.03 meV | 6.9 |
+| TFN (`l_max=2`) | yes | yes | 573k | 59.43 meV | 67.9 |
+
+The third row is a control I added late, and I should have had it from the start. Without
+it the experiment confounds two things: every equivariant model also sees angles, and the
+only angle-free model is also the only non-equivariant one. PaiNN beating the baseline was
+therefore ambiguous — equivariance, or merely angular information?
+
+The angle-aware invariant model separates them. It reads bond angles as
+:math:`P_\ell(\cos\theta)`, which by the addition theorem is exactly the invariant
+contraction of two degree-:math:`\ell` harmonics — the :math:`\ell \otimes \ell \to 0` path
+of a Clebsch-Gordan product written without the machinery. So it receives the same angular
+content an equivariant network builds, in invariant form, and the 22.5% gap decomposes:
+
+* angles alone: 56.03 → 52.27 meV, −6.7%
+* equivariance on top: 52.27 → 43.43 meV, −16.9%
+
+Angular information accounts for under a third of the advantage. Equivariance contributes
+about two and a half times more, so it is not simply an expensive route to angles — which
+was the live alternative explanation and the one I could not previously rule out.
+
+The mechanism this points to is specific. The angular model collapses angles to scalars at
+the moment it reads them, so a later layer cannot compose them geometrically; an
+equivariant model carries direction forward as an :math:`\ell > 0` feature that subsequent
+layers keep operating on. Both see the same angles. What differs is whether that
+information survives the next layer, and that appears to be worth more than the angles
+themselves.
+
+Cost makes the same point from the other side. The angle-aware model runs 5x slower per
+step than PaiNN and is still 20% worse: enumerating ~414k explicit triplets per batch is a
+strictly worse bargain than equivariant vector algebra, which gets the same angular content
+as a by-product of its representation rather than as an extra computation.
 
 Three claims stack here, and the order they arrived in is the point of the whole project.
 
