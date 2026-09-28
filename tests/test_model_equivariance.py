@@ -28,6 +28,7 @@ from symmetrynet.models import (
     InvariantGNN,
     NaiveCoordinateGNN,
     NaiveCoordinateMLP,
+    NequIP,
     PaiNN,
     ScratchTFN,
     TensorFieldNetwork,
@@ -53,6 +54,7 @@ def build(name: str, **kwargs):
             "tfn_l1": lambda: TensorFieldNetwork(multiplicity=16, l_max=1, num_layers=3, **kwargs),
             "tfn_l2": lambda: TensorFieldNetwork(multiplicity=16, l_max=2, num_layers=3, **kwargs),
             "painn": lambda: PaiNN(hidden=32, num_layers=3, **kwargs),
+            "nequip": lambda: NequIP(multiplicity=16, l_max=2, num_layers=3, **kwargs),
             "scratch": lambda: ScratchTFN(hidden_multiplicity=8, l_max=2, num_layers=2, **kwargs),
             "naive": lambda: NaiveCoordinateGNN(hidden=32, num_layers=3, **kwargs),
             "naive_mlp": lambda: NaiveCoordinateMLP(hidden=64, **kwargs),
@@ -60,7 +62,7 @@ def build(name: str, **kwargs):
         return builders[name]().eval()
 
 
-EQUIVARIANT = ["baseline", "tfn_l0", "tfn_l1", "tfn_l2", "painn", "scratch"]
+EQUIVARIANT = ["baseline", "tfn_l0", "tfn_l1", "tfn_l2", "painn", "nequip", "scratch"]
 NOT_EQUIVARIANT = ["naive", "naive_mlp"]
 
 
@@ -235,6 +237,32 @@ def test_painn_uses_no_tensor_products():
         name for name in imported if any(token in name.lower() for token in banned)
     ]
     assert not offenders, f"painn.py should not import {offenders}"
+
+
+def test_nequip_actually_carries_both_parities(molecules):
+    """NequIP's distinguishing feature must be present, not silently absent.
+
+    It carries odd-parity irreps (``0o``, ``1e``, ``2o``) that the TFN does not, and those
+    are the reason its gate must use an *odd* activation on odd scalars. If the irreps
+    degenerated to natural parity, every inversion test above would still pass -- but it
+    would be passing on a model that is no longer the one being claimed.
+    """
+    model = build("nequip")
+    parities = {(ir.l, ir.p) for _, ir in model.layers[0].irreps_out}
+    natural = {(ell, (-1) ** ell) for ell in range(3)}
+    assert natural <= parities, "natural-parity irreps missing"
+    assert parities - natural, "no opposite-parity irreps: this is not NequIP"
+
+    # And those channels must be non-trivial, not merely declared.
+    species, pos, batch, _ = molecules
+    captured = {}
+    handle = model.layers[0].register_forward_hook(
+        lambda _m, _i, out: captured.__setitem__("h", out.detach())
+    )
+    with torch.no_grad():
+        model(species, pos, batch)
+    handle.remove()
+    assert captured["h"].abs().max() > 1e-6
 
 
 def test_gpu_reproducibility_floor_is_below_tolerance(molecules):

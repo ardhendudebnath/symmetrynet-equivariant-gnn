@@ -1,4 +1,4 @@
-"""Models under comparison.
+﻿"""Models under comparison.
 
 ``InvariantGNN``
     Distance-only baseline.  Rotation invariant, angle blind.
@@ -18,6 +18,7 @@ from .angular import AngularInvariantGNN
 from .baseline import InvariantGNN
 from .forces import ForceModel
 from .naive import NaiveCoordinateGNN, NaiveCoordinateMLP
+from .nequip import NequIP
 from .painn import PaiNN
 from .tfn import TensorFieldNetwork, hidden_irreps
 
@@ -25,6 +26,7 @@ MODEL_REGISTRY = {
     "baseline": InvariantGNN,
     "angular": AngularInvariantGNN,
     "tfn": TensorFieldNetwork,
+    "nequip": NequIP,
     "painn": PaiNN,
     "naive": NaiveCoordinateGNN,
     "naive_mlp": NaiveCoordinateMLP,
@@ -35,6 +37,7 @@ __all__ = [
     "InvariantGNN",
     "AngularInvariantGNN",
     "TensorFieldNetwork",
+    "NequIP",
     "PaiNN",
     "NaiveCoordinateGNN",
     "NaiveCoordinateMLP",
