@@ -54,5 +54,19 @@
     "val_mae_meV": 58.60338315625124,
     "test_mae_meV": 59.434075639117225,
     "minutes": 276.5816666666666
+  },
+  {
+    "run_name": "nequip_f1_e200_s0",
+    "model": "nequip",
+    "l_max": 2,
+    "train_fraction": 1.0,
+    "seed": 0,
+    "epochs": 200,
+    "num_params": 403145,
+    "train_size": 110000,
+    "best_epoch": 199,
+    "val_mae_meV": 65.87619694189615,
+    "test_mae_meV": 66.46369359520413,
+    "minutes": 835.4721466104189
   }
 ]

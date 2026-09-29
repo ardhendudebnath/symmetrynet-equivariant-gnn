@@ -153,12 +153,13 @@ baseline line already sits below all three bars — which is the next result.
 
 All four at 200 epochs, same loop, same data, same schedule:
 
-| model | equivariant? | sees angles? | params | test MAE | ms/step |
+| model | equivariant? | sees angles? | params | test MAE | train time |
 |---|---|---|---|---|---|
-| **Equivariant PaiNN** (`l<=1`) | ✔ | ✔ | 576k | **43.43 meV** | 13.3 |
-| Angle-aware invariant | ✘ | ✔ | 369k | 52.27 meV | 71 |
-| Distance-only baseline | ✘ | ✘ | 277k | 56.03 meV | 6.9 |
-| Equivariant TFN (`l_max=2`) | ✔ | ✔ | 573k | 59.43 meV | 67.9 |
+| **Equivariant PaiNN** (`l<=1`) | ✔ | ✔ | 576k | **43.43 meV** | 81 min |
+| Angle-aware invariant | ✘ | ✔ | 369k | 52.27 meV | 322 min |
+| Distance-only baseline | ✘ | ✘ | 277k | 56.03 meV | 37 min |
+| Equivariant TFN (`l_max=2`) | ✔ | ✔ | 573k | 59.43 meV | 277 min |
+| Equivariant NequIP (`l_max=2`) | ✔ | ✔ | 403k | 66.46 meV | 835 min |
 
 The angle-aware invariant model is the control that makes this readable. Without it,
 equivariance and angular information are confounded — every equivariant model here also
@@ -183,8 +184,42 @@ PaiNN and still 20% worse**: enumerating ~414k explicit triplets per batch is a 
 worse deal than equivariant vector algebra, which obtains the same angular content as a
 by-product of its representation.
 
-And the TFN — equivariant, `l_max=2` — is beaten by an *invariant* model. Being
-equivariant is no guarantee of anything by itself.
+And both Clebsch-Gordan models — the TFN and NequIP — are beaten by an *invariant* model.
+Being equivariant is no guarantee of anything by itself.
+
+### Trying to break this conclusion: NequIP
+
+The obvious objection to the above is that the TFN is a 2018 design, and that a
+well-built Clebsch-Gordan model would tell a different story. NequIP is that model, so it
+was implemented and run under the identical harness specifically to try to overturn the
+result — species re-injected at every layer through a tensor product, both parities
+carried (`0e,0o,1e,1o,2e,2o`) rather than natural parity only, and the NequIP block
+ordering.
+
+It did not overturn it. **66.46 meV, the worst of the five, for 10× PaiNN's compute.**
+Two independently written CG architectures now land on the same side of the result.
+
+The caveat matters, though, and it is a real limit on what this shows. **This is my
+implementation of NequIP, not the reference one**, and it does not reach published NequIP
+quality. So the honest claim is *"a faithful-in-structure NequIP, at matched budget in this
+harness, does not beat PaiNN"* — not *"NequIP is worse than PaiNN"*. The alternative
+explanation, that I build CG-based models less well than I build PaiNN, cannot be excluded
+from this evidence, and it would be convenient to ignore.
+
+What the two CG results do jointly support is narrower and still useful: within a
+controlled harness, the tensor-product machinery cost 4–10× the compute and repaid none of
+it, while a cheaper construction restricted to `l<=1` won outright.
+
+<details>
+<summary>Was NequIP under-trained?</summary>
+
+Its best epoch was 199 of 200, which is the budget-limited signature that has misled this
+project before. Checking the trajectory shape instead: NequIP improved **0.6%** over its
+final quarter, the same state as the TFN (0.7%) and the baseline (0.6%), both of whose
+numbers are quoted. A longer schedule would plausibly buy another point or two. Closing a
+53% gap to PaiNN is not plausible, so the ordering is robust to the budget question even
+though the exact figure may understate it slightly.
+</details>
 
 PaiNN beats the baseline by **22.5%** and the TFN by **26.9%** — and does it in under a
 third of the TFN's compute at the same parameter count. Published PaiNN on this exact

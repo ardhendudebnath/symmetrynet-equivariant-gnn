@@ -69,7 +69,8 @@ def build_payload() -> dict:
                 "test_mae": comparison[key]["test_mae_meV"],
                 "params": comparison[key]["num_params"],
             }
-            for key in ("painn", "angular", "baseline", "tfn")
+            # Ordered best-first, which is how the page reads them.
+            for key in ("painn", "angular", "baseline", "tfn", "nequip")
             if key in comparison
         ],
         "ablation": [

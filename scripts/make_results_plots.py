@@ -1,4 +1,4 @@
-"""Turn the experiment JSON files into the figures used in the README and report.
+﻿"""Turn the experiment JSON files into the figures used in the README and report.
 
 Reads whatever is present under ``results/`` and skips the rest, so it can be run
 mid-sweep to see how things are going.
@@ -29,18 +29,21 @@ RUNS = Path.home() / ".symmetrynet" / "runs"
 BASELINE_COLOR = "#2a9d5c"
 TFN_COLOR = "#1b6ca8"
 PAINN_COLOR = "#8e44ad"
+NEQUIP_COLOR = "#7f8c8d"
 ANGULAR_COLOR = "#d68910"
 LABELS = {
     "baseline": "Invariant, distances only",
     "angular": "Invariant, angle-aware (the control)",
     "tfn": "Equivariant TFN (Clebsch-Gordan, l<=2)",
     "painn": "Equivariant PaiNN (vector algebra, l<=1)",
+    "nequip": "Equivariant NequIP (Clebsch-Gordan, both parities)",
 }
 COLORS = {
     "baseline": BASELINE_COLOR,
     "angular": ANGULAR_COLOR,
     "tfn": TFN_COLOR,
     "painn": PAINN_COLOR,
+    "nequip": NEQUIP_COLOR,
 }
 
 
@@ -80,7 +83,7 @@ def plot_training_curves() -> None:
     ax.set_xlabel("epoch")
     ax.set_ylabel("validation MAE (meV)")
     ax.set_yscale("log")
-    ax.set_title("HOMO-LUMO gap on QM9 — identical training loop, only the model differs")
+    ax.set_title("HOMO-LUMO gap on QM9 â€” identical training loop, only the model differs")
     ax.legend(fontsize=9)
     ax.grid(alpha=0.25, which="both")
     fig.tight_layout()
@@ -201,7 +204,7 @@ def write_table() -> None:
         for r in sorted(
             rows, key=lambda r: (r["model"], r["train_fraction"], r["l_max"] or -1)
         ):
-            l_max = "—" if r["l_max"] is None else r["l_max"]
+            l_max = "â€”" if r["l_max"] is None else r["l_max"]
             lines.append(
                 f"| {r['run_name']} | {r['model']} | {l_max} | {r['train_size']:,} "
                 f"| {r['num_params']:,} | {r['epochs']} | {r['best_epoch']} "
@@ -245,7 +248,7 @@ def plot_multiseed() -> None:
     ax.set_xlabel("training molecules")
     ax.set_ylabel("baseline MAE / PaiNN MAE")
     ax.set_title("Equivariant advantage vs dataset size\n"
-                 "the advantage GROWS with data — opposite to the usual claim",
+                 "the advantage GROWS with data â€” opposite to the usual claim",
                  fontsize=11)
     ax.legend(fontsize=9, loc="upper left")
     ax.grid(alpha=0.25, which="both")

@@ -196,12 +196,40 @@ representational claim.
 **Equivariance wins decisively — but only after changing which equivariant architecture is
 used.** At a matched 200-epoch budget:
 
-| model | equivariant? | sees angles? | params | test MAE | ms/step |
+| model | equivariant? | sees angles? | params | test MAE | train time |
 |---|---|---|---|---|---|
-| PaiNN (`l<=1`) | yes | yes | 576k | **43.43 meV** | 13.3 |
-| angle-aware invariant | no | yes | 369k | 52.27 meV | 71 |
-| distance-only baseline | no | no | 277k | 56.03 meV | 6.9 |
-| TFN (`l_max=2`) | yes | yes | 573k | 59.43 meV | 67.9 |
+| PaiNN (`l<=1`) | yes | yes | 576k | **43.43 meV** | 81 min |
+| angle-aware invariant | no | yes | 369k | 52.27 meV | 322 min |
+| distance-only baseline | no | no | 277k | 56.03 meV | 37 min |
+| TFN (`l_max=2`) | yes | yes | 573k | 59.43 meV | 277 min |
+| NequIP (`l_max=2`) | yes | yes | 403k | 66.46 meV | 835 min |
+
+The last row is the attempt to break this conclusion rather than defend it. The natural
+objection to everything here is that the TFN is a 2018 design and a properly built
+Clebsch-Gordan model would say otherwise, so NequIP was implemented under the identical
+harness: species re-injected at every layer through a tensor product, both parities carried
+rather than natural parity only, and the NequIP block ordering. It came last, at ten times
+PaiNN's compute, and two independently written CG architectures now sit on the same side of
+the result.
+
+I want to be careful about how much that licenses. This is *my* implementation of NequIP,
+and it does not reach published NequIP quality. The defensible claim is that a
+faithful-in-structure NequIP, at matched budget in this harness, does not beat PaiNN — not
+that NequIP is the weaker architecture. The alternative reading, that I build
+tensor-product models less well than I build PaiNN, is not excluded by this evidence, and
+it would be easy to leave unsaid.
+
+What the two CG results jointly support is narrower and still worth having: within one
+controlled harness, the tensor-product machinery cost four to ten times the compute and
+repaid none of it, while a construction restricted to `l<=1` won outright. That is
+consistent with the per-degree measurement below, where the prediction turned out to be
+3.7x less sensitive to an `l=2` component than to a scalar.
+
+On whether NequIP was simply under-trained: its best epoch was 199 of 200, the
+budget-limited signature that has misled this project three times. The trajectory shape is
+the better test, and it improved 0.6% over its final quarter — the same state as the TFN
+(0.7%) and the baseline (0.6%), both of which are quoted. A longer schedule would plausibly
+buy a point or two; it would not close a 53% gap.
 
 The third row is a control I added late, and I should have had it from the start. Without
 it the experiment confounds two things: every equivariant model also sees angles, and the
