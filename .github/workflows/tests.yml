@@ -30,11 +30,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -e ".[dev]"
+          python -m ruff --version
+          python -c "import torch, e3nn, torch_geometric; print('torch', torch.__version__)"
 
       - name: Lint
-        run: ruff check src tests scripts
+        # `python -m ruff`, not the bare `ruff` console script: the latter depends on the
+        # package's entry point being on PATH, which is one more thing that can quietly
+        # differ between a local shell and the runner. The module form only needs the
+        # package importable, which the install step above has already proved.
+        run: python -m ruff check src tests scripts --output-format=concise
 
       - name: Run tests
+        # `always()` so a style failure cannot hide a correctness failure. Previously a
+        # red Lint step short-circuited the job and the test results were never produced,
+        # which is the wrong way round: lint is cosmetic, tests are the point.
+        if: always()
         # No dataset download: every test builds its own molecules, so CI needs neither
         # QM9 (~400 MB) nor MD17 (~220 MB).
         run: pytest -q
@@ -55,5 +65,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -e ".[dev]"
+          python -m ruff --version
+          python -c "import torch, e3nn, torch_geometric; print('torch', torch.__version__)"
       - name: Rotation, translation, inversion and permutation invariance
         run: pytest tests/test_model_equivariance.py tests/test_forces.py -q

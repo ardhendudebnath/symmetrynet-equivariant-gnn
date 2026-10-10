@@ -19,7 +19,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.6", "jupyter>=1.0", "tensorboard>=2.16"]
+dev = [
+    "pytest>=8.0",
+    # Bounded below 0.17: a linter pinned only by a lower bound silently adopts new rules
+    # on every release, so CI can turn red with no change to the code -- which is how the
+    # badge on this repo first went red. Patch upgrades are fine; new minors are opt-in.
+    "ruff>=0.16.2,<0.17",
+    "tensorboard>=2.16",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
