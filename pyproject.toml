@@ -43,3 +43,12 @@ src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+# State it rather than let ruff infer it. Whether `symmetrynet` counts as first-party or
+# third-party decides which group its imports belong in, and the inference can land
+# differently depending on whether the package is visible in site-packages (it is, via
+# `pip install -e .`) or only under `src/`. That made CI report I001 on scripts that lint
+# clean locally, with the same ruff version and a cold cache -- a failure that is
+# unreproducible by construction. Declaring it removes the guess.
+known-first-party = ["symmetrynet"]
