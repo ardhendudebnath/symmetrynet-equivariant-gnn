@@ -1,4 +1,4 @@
-name: tests
+﻿name: tests
 
 on:
   push:
@@ -15,9 +15,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -38,7 +38,7 @@ jobs:
         # package's entry point being on PATH, which is one more thing that can quietly
         # differ between a local shell and the runner. The module form only needs the
         # package importable, which the install step above has already proved.
-        run: python -m ruff check src tests scripts --output-format=concise
+        run: python -m ruff check src tests scripts --output-format=github
 
       - name: Run tests
         # `always()` so a style failure cannot hide a correctness failure. Previously a
@@ -55,8 +55,8 @@ jobs:
     # provide; if it ever breaks, that should be legible at a glance.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
